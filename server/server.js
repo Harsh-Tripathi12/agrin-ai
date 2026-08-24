@@ -66,6 +66,13 @@ app.use(
     errorHandler
 );
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "AgriN API is running successfully 🚜🌱",
+  });
+});
+
 app.listen(PORT, () => {
     console.log(
         `AgriN server running on port ${PORT}`
