@@ -1,0 +1,17 @@
+{
+    "appName": "एग्रीएन",
+    "welcome": "एग्रीएन में आपका स्वागत है",
+    "farmerAssistant": "किसान सहायक",
+    "cropDoctor": "फसल डॉक्टर",
+    "farmRisk": "खेत का जोखिम",
+    "regenerativeAdvisor": "पुनर्योजी कृषि सलाहकार",
+    "dashboard": "डैशबोर्ड",
+    "weather": "मौसम",
+    "farm": "आपका खेत",
+    "login": "लॉगिन",
+    "signup": "खाता बनाएं",
+    "send": "भेजें",
+    "analyze": "फसल की जांच करें",
+    "loading": "लोड हो रहा है...",
+    "retry": "फिर कोशिश करें"
+}

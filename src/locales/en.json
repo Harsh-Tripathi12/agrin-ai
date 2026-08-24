@@ -1,0 +1,17 @@
+{
+    "appName": "AgriN",
+    "welcome": "Welcome to AgriN",
+    "farmerAssistant": "Farmer Assistant",
+    "cropDoctor": "Crop Doctor",
+    "farmRisk": "Farm Risk",
+    "regenerativeAdvisor": "Regenerative Advisor",
+    "dashboard": "Dashboard",
+    "weather": "Weather",
+    "farm": "Your Farm",
+    "login": "Login",
+    "signup": "Create Account",
+    "send": "Send",
+    "analyze": "Analyze Crop",
+    "loading": "Loading...",
+    "retry": "Try Again"
+}
