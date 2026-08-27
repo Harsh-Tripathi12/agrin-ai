@@ -1,137 +1,146 @@
-AgriN — Agricultural Intelligence Platform
+# 🌱 AgriN — Agricultural Intelligence Platform
 
-AgriN is a full-stack, AI-powered agricultural intelligence platform designed to help farmers make practical and informed farming decisions using farm data, AI assistance, crop analysis, farm-risk insights, and regenerative agriculture recommendations.
+<p align="center"><strong>AI-powered agricultural intelligence for smarter and more sustainable farming.</strong></p>
 
-The application is designed with a simple, farmer-friendly interface and supports English and Hindi.
+<p align="center">AgriN combines AI assistance, crop analysis, farm-risk assessment, and regenerative agriculture guidance in one farmer-friendly platform.</p>
 
-What AgriN Does
+<p align="center"><a href="https://agrin-ai-frontend.onrender.com/">🌐 Live Demo</a> · <a href="https://agrin-ai.onrender.com/">⚙️ API</a></p>
 
-👨‍🌾 Farmer profile and farm setup
+---
 
-📊 Farmer dashboard
+## 📌 Overview
 
-🤖 AI Farmer Assistant
+**AgriN** is a full-stack agricultural intelligence platform built to help farmers make better farming decisions using modern web technologies, cloud services, and AI.
 
-🩺 Crop Doctor / crop analyzer
+### Core capabilities
 
-⚠️ Farm Risk assessment
+- 👨‍🌾 Farmer profile and farm setup
+- 📊 Personalized farmer dashboard
+- 🤖 AI Farmer Assistant
+- 🩺 Crop Doctor / Crop Analyzer
+- ⚠️ Farm Risk Assessment
+- 🌿 Regenerative Agriculture Advisor
+- 🌐 English and Hindi language support
+- 🔥 Firebase / Firestore data storage
+- 🚀 Production deployment using Render
 
-🌿 Regenerative Agriculture Advisor
+---
 
-🌐 English + Hindi language support
+## 🎯 Project Goal
 
-📱 Responsive web interface
+AgriN brings several agricultural intelligence tools together in one accessible platform.
 
-🔥 Firebase / Firestore data storage
+| Goal | Description |
+|---|---|
+| 🌱 Practical | Useful recommendations for real farming situations |
+| 🤖 AI-assisted | AI-supported agricultural decision-making |
+| 📊 Data-driven | Uses farmer and farm information for guidance |
+| 🌐 Accessible | Simple interface with multiple language support |
+| ♻️ Sustainable | Encourages regenerative and sustainable practices |
 
-🚀 Production deployment with Render
+---
 
-✨ Main Features
+# ✨ Features
 
-👨‍🌾 Farmer Profile & Farm Setup
+### 👨‍🌾 Farmer Profile & Farm Setup
 
-Farmers can create and manage their basic profile and farm information.
+Farmers can enter and manage their name, phone number, preferred language, farm information, land size/unit, soil type, irrigation type, location, and crop information.
 
-Stored information can include:
+### 📊 Farmer Dashboard
 
-Farmer name
+The dashboard is the main control center after farm setup and provides access to the major agricultural tools.
 
-Phone number
+### 🤖 AI Farmer Assistant
 
-Preferred language
+Provides farmer-friendly agricultural guidance using the **Google Gemini API**, including farming, crop, soil, irrigation, and general agricultural questions. AI requests are handled through the backend.
 
-Farm name
+### 🩺 Crop Doctor
 
-Land size
+AI-assisted crop analysis designed to help farmers understand possible crop problems, causes, and recommended actions.
 
-Land unit
+### ⚠️ Farm Risk Assessment
 
-Soil type
+AI-assisted assessment of potential agricultural risks, including severity, causes, preventive actions, and recommendations.
 
-Irrigation type
+### 🌿 Regenerative Agriculture Advisor
 
-Farm location
+Provides guidance focused on long-term farm health, including soil health, water management, sustainable practices, and regenerative agriculture.
 
-Crop information
+---
 
-📊 Farmer Dashboard
+# 🌐 Language Support
 
-The dashboard acts as the main control center after farm setup and provides access to the agricultural tools, AI-powered features, farm risk information, crop analysis, and regenerative farming recommendations.
+AgriN currently supports:
 
-🤖 AI Farmer Assistant
+- 🇬🇧 **English**
+- 🇮🇳 **Hindi**
 
-The AI Assistant provides farmer-friendly agricultural guidance using the Gemini API, including farming questions, crop guidance, soil and irrigation guidance, and practical recommendations.
+---
 
-🩺 Crop Doctor
+# 🧭 Main User Flow
 
-Crop Doctor provides AI-assisted crop analysis to help farmers analyze plant problems, identify possible issues, understand causes, and receive recommended actions.
+```mermaid
+flowchart TD
+    A[🌱 Welcome / Language Selection] --> B[👨‍🌾 Farmer Profile]
+    B --> C[🚜 Farm Setup]
+    C --> D[📊 Dashboard]
+    D --> E[🤖 AI Farmer Assistant]
+    D --> F[🩺 Crop Doctor]
+    D --> G[⚠️ Farm Risk]
+    D --> H[🌿 Regenerative Advisor]
+```
 
-⚠️ Farm Risk
+---
 
-The Farm Risk module provides AI-assisted assessment of agricultural risks, including risk severity, possible causes, and recommended preventive actions.
+# 🏗️ System Architecture
 
-🌿 Regenerative Agriculture Advisor
-
-The Regenerative Advisor focuses on long-term farm health and sustainable farming practices such as soil health, water management, and regenerative agriculture.
-
-🌐 Language Support
-
-AgriN supports:
-
-🇬🇧 English
-
-🇮🇳 Hindi
-
-The application uses a translation-based approach rather than maintaining separate pages for every language.
-
-🛠️ Tech Stack
-
-Frontend
-
-React
-
-Vite
-
-JavaScript
-
-Tailwind CSS
-
-React Router
-
-Backend
-
-Node.js
-
-Express.js
-
-REST APIs
-
-Database
-
-Firebase Firestore
-
-Firebase Admin SDK
-
-AI
-
-Google Gemini API
-
-Development & Testing
-
-VS Code
-
-Git
-
-GitHub
-
-Hoppscotch
-
-Deployment
-
-Render
-
-📁 Project Structure
-
+```mermaid
+flowchart LR
+    U[👨‍🌾 Farmer] --> F[React Frontend]
+    F --> API[Express REST API]
+    API --> DB[(Firebase Firestore)]
+    API --> AI[Google Gemini API]
+    F -. Firebase Web SDK .-> AUTH[Firebase Services]
+    F --> R1[Render Static Site]
+    API --> R2[Render Web Service]
+```
+
+| Layer | Responsibility |
+|---|---|
+| 🎨 React + Vite | User interface and frontend routing |
+| 🎨 Tailwind CSS | Frontend styling |
+| ⚙️ Express + Node.js | REST API and backend logic |
+| 🔥 Firebase / Firestore | Application data storage |
+| 🤖 Gemini | AI-powered agricultural features |
+| 🚀 Render | Production hosting |
+
+---
+
+# 🛠️ Tech Stack
+
+| Category | Technology |
+|---|---|
+| Frontend | React |
+| Build Tool | Vite |
+| Language | JavaScript |
+| Styling | Tailwind CSS |
+| Routing | React Router |
+| Backend | Node.js + Express.js |
+| Database | Firebase Firestore |
+| Firebase Server | Firebase Admin SDK |
+| AI | Google Gemini API |
+| API Testing | Hoppscotch |
+| Version Control | Git + GitHub |
+| Deployment | Render |
+
+---
+
+# 📁 Project Structure
+
+<details>
+<summary><strong>📂 Click to expand</strong></summary>
+
+```text
 AgriN/
 │
 ├── public/
@@ -178,71 +187,34 @@ AgriN/
 ├── package-lock.json
 ├── vite.config.js
 └── README.md
+```
 
-🧭 Application Routes
+</details>
 
-Route
+---
 
-Page
+# 🧭 Application Routes
 
-/
+| Route | Feature |
+|---|---|
+| `/` | Welcome / Language Selection |
+| `/profile` | Farmer Profile |
+| `/farm-setup` | Farm Setup |
+| `/dashboard` | Farmer Dashboard |
+| `/crop-doctor` | Crop Doctor |
+| `/risk` | Farm Risk |
+| `/improve` | Regenerative Advisor |
+| `/assistant` | AI Farmer Assistant |
 
-Welcome / Language Selection
+---
 
-/profile
+# 🔥 Firebase & Firestore
 
-Farmer Profile
+AgriN uses **Firebase Firestore** for application data storage. The backend uses the **Firebase Admin SDK** to communicate with Firestore.
 
-/farm-setup
+### `farmers`
 
-Farm Setup
-
-/dashboard
-
-Farmer Dashboard
-
-/crop-doctor
-
-Crop Doctor
-
-/risk
-
-Farm Risk
-
-/improve
-
-Regenerative Advisor
-
-/assistant
-
-AI Farmer Assistant
-
-🔄 Main User Flow
-
-Welcome / Language Selection
-          ↓
-    Farmer Profile
-          ↓
-      Farm Setup
-          ↓
-       Dashboard
-          │
-    ┌─────┼─────────────┐
-    ↓     ↓      ↓      ↓
-Weather  Crop   Farm    AI
-         Doctor  Risk Assistant
-              │
-              ↓
-     Regenerative Advisor
-
-🔥 Firebase / Firestore
-
-AgriN uses Firebase Firestore for application data storage.
-
-The backend uses the Firebase Admin SDK to communicate securely with Firestore.
-
-farmers
-
+```text
 id
 name
 phone
@@ -250,9 +222,11 @@ language
 location
 createdAt
 updatedAt
+```
 
-farms
+### `farms`
 
+```text
 id
 farmerId
 farmName
@@ -263,91 +237,125 @@ irrigationType
 location
 createdAt
 updatedAt
+```
 
-crops
+---
 
-Crop-related information can be associated with farmer/farm data as the application expands.
+# 🔌 Backend API
 
-🔌 Backend API
+### Local
 
-Local Backend
-
+```text
 http://localhost:5000
+```
 
-Health Check
+### Production
 
-GET /api/health
+```text
+https://agrin-ai.onrender.com/
+```
 
-Farmer APIs
+### Example Farmer Endpoints
 
+```http
 POST /api/farmers
-GET /api/farmers/:farmerId
-PUT /api/farmers/:farmerId
+GET  /api/farmers/:farmerId
+PUT  /api/farmers/:farmerId
+```
 
-Farm APIs
+### Example Farm Endpoints
 
+```http
 POST /api/farmers/farm/create
-GET /api/farmers/:farmerId/farms
+GET  /api/farmers/:farmerId/farms
+```
 
-Additional AI and agricultural feature routes are implemented as part of the application.
+Additional routes are implemented for the AI and agricultural features.
 
-🌍 Production Deployment
+---
 
-AgriN is deployed using Render with separate frontend and backend services.
+# 🚀 Deployment
 
-                 🌱 AgriN
-                    │
-                    ▼
-          ┌──────────────────┐
-          │ React Frontend   │
-          │ Render Static     │
-          │ Site              │
-          └────────┬─────────┘
-                   │
-                   │ REST API
-                   ▼
-          ┌──────────────────┐
-          │ Express Backend  │
-          │ Render Web       │
-          │ Service          │
-          └────────┬─────────┘
-                   │
-             ┌─────┴─────┐
-             ▼           ▼
-         Firestore     Gemini
+AgriN is deployed on **Render** using separate frontend and backend services.
 
-🌐 Production Frontend
+### 🌐 Frontend
+
+**Live Application:**
 
 https://agrin-ai-frontend.onrender.com/
 
-⚙️ Production Backend
+### ⚙️ Backend
+
+**Production API:**
 
 https://agrin-ai.onrender.com/
 
-The frontend communicates with the production backend through the configured VITE_API_URL.
+```text
+GitHub Repository
+       │
+       ├───────────────┐
+       ▼               ▼
+Render Static Site   Render Web Service
+       │               │
+       ▼               ▼
+React Frontend       Express Backend
+       │               │
+       └─────── API ───┘
+                       │
+                ┌──────┴──────┐
+                ▼             ▼
+           Firestore       Gemini
+```
 
-⚙️ Local Development
+---
 
-1. Clone the repository
+# 💻 Local Development
 
+### 1. Clone
+
+```bash
 git clone <YOUR_GITHUB_REPOSITORY_URL>
+```
 
-2. Enter the project
+### 2. Enter the project
 
+```bash
 cd agrin-ai
+```
 
-3. Install dependencies
+### 3. Install dependencies
 
+```bash
 npm install
+```
 
-🔐 Environment Variables
+### 4. Start frontend
 
-Create the required environment variables locally.
+```bash
+npm run dev
+```
 
-Frontend variables use the VITE_ prefix.
+Frontend: `http://localhost:5173`
 
-Example:
+### 5. Start backend
 
+In another terminal:
+
+```bash
+npm run server
+```
+
+Backend: `http://localhost:5000`
+
+---
+
+# 🔐 Environment Variables
+
+> ⚠️ Never commit real API keys, Firebase private keys, service-account credentials, or `.env` files to GitHub.
+
+### Frontend
+
+```env
 VITE_API_URL=http://localhost:5000
 
 VITE_FIREBASE_API_KEY=your_firebase_web_api_key
@@ -356,9 +364,11 @@ VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 VITE_FIREBASE_APP_ID=your_firebase_app_id
+```
 
-Backend variables:
+### Backend
 
+```env
 PORT=5000
 
 FIREBASE_PROJECT_ID=your_project_id
@@ -367,63 +377,49 @@ FIREBASE_PRIVATE_KEY="your_private_key"
 
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=your_gemini_model
+```
 
-Production
+### Production frontend
 
-The production frontend uses:
-
+```env
 VITE_API_URL=https://agrin-ai.onrender.com
+```
 
-Production environment variables are configured directly in Render.
+Production variables are configured directly in Render.
 
-🔒 Security
+---
 
-Never commit secrets to GitHub.
+# 🔒 Security
 
-The following must remain private:
+### Never commit
 
+```text
+.env
 Firebase Admin private key
-
 Firebase service-account credentials
-
 Gemini API key
+Private API credentials
+```
 
-Other private API credentials
+Recommended `.gitignore` entries:
 
-The .env file must be included in .gitignore.
+```gitignore
+node_modules/
+.env
+.env.local
+.env.production
+dist/
+```
 
-Frontend Firebase configuration values are used through environment variables and must never contain Firebase Admin credentials.
+---
 
-▶️ Run the Project
+# 🧪 API Testing
 
-Start Frontend
+Backend APIs were tested during development using **Hoppscotch**.
 
-npm run dev
+Example successful response:
 
-Frontend:
-
-http://localhost:5173
-
-Start Backend
-
-In another terminal:
-
-npm run server
-
-Backend:
-
-http://localhost:5000
-
-🧪 API Testing
-
-Backend APIs can be tested using Hoppscotch or another REST API testing tool.
-
-Example:
-
-POST /api/farmers
-
-Successful response:
-
+```json
 {
   "success": true,
   "message": "Farmer created successfully",
@@ -434,156 +430,68 @@ Successful response:
     "language": "en"
   }
 }
-
-🎯 Project Goal
-
-The goal of AgriN is to combine agricultural data, weather intelligence, artificial intelligence, crop analysis, farm risk assessment, and regenerative agriculture knowledge into one accessible platform.
-
-AgriN focuses on making agricultural technology:
-
-Accessible
-
-Practical
-
-Data-driven
-
-AI-assisted
-
-Farmer-friendly
-
-Available in English and Hindi
-
-📈 Current Project Status
-
-✅ Completed
-
-Project architecture
-
-React + Vite frontend
-
-Tailwind CSS
-
-Frontend routing
-
-Responsive application shell
-
-Welcome / language selection
-
-Farmer profile flow
-
-Farm setup flow
-
-Dashboard
-
-Express backend
-
-REST API structure
-
-React → Express integration
-
-Firebase Admin SDK
-
-Firestore integration
-
-Farmer API
-
-Farm API
-
-AI Assistant
-
-Crop Doctor / Analyzer
-
-Farm Risk
-
-Regenerative Agriculture Advisor
-
-English + Hindi support
-
-Production environment configuration
-
-GitHub repository
-
-Render backend deployment
-
-Render frontend deployment
-
-Frontend → production backend connection
-
-Production Firebase configuration
-
-Production AI configuration
-
-🚀 Future Improvements
-
-Real-time weather API integration
-
-More regional languages
-
-Voice-based AI Assistant
-
-Advanced crop disease detection
-
-Offline / low-connectivity support
-
-Personalized crop recommendations
-
-Government agricultural scheme information
-
-Market price information
-
-Advanced farm analytics
-
-Push notifications
-
-Automated testing
-
-Advanced AI personalization
-
-Further UI/UX refinement
-
-🗺️ Development Roadmap
-
-[✓] Project Setup
-[✓] React + Vite
-[✓] Tailwind CSS
-[✓] Express Backend
-[✓] Firebase / Firestore
-[✓] Farmer API
-[✓] Farm API
-[✓] Frontend Routing
-[✓] Farmer Profile
-[✓] Farm Setup
-[✓] Dashboard
-[✓] AI Farmer Assistant
-[✓] Crop Doctor
-[✓] Farm Risk
-[✓] Regenerative Advisor
-[✓] English + Hindi Support
-[✓] Production Frontend
-[✓] Production Backend
-[✓] Frontend → Backend Connection
-
-Future
-[ ] Weather API
-[ ] Voice Assistant
-[ ] Advanced Crop Vision
-[ ] Notifications
-[ ] Automated Testing
-[ ] Advanced Analytics
-[ ] Additional Languages
-
-👨‍💻 Development
-
-AgriN is developed as a full-stack agricultural technology project focused on solving real-world farming problems through modern web technologies, artificial intelligence, cloud services, and sustainable agriculture concepts.
-
-📄 License
-
-This project is currently intended for educational, development, and demonstration purposes.
-
-A formal open-source or commercial license can be added before public commercial use.
-
-🌱 AgriN
-
-Smart technology for better farming decisions.
-
-Empowering farmers with AI, data, and sustainable agriculture.
+```
+
+---
+
+# 📈 Project Status
+
+| Component | Status |
+|---|:---:|
+| React + Vite | ✅ |
+| Tailwind CSS | ✅ |
+| Frontend Routing | ✅ |
+| Farmer Profile | ✅ |
+| Farm Setup | ✅ |
+| Dashboard | ✅ |
+| Express Backend | ✅ |
+| REST APIs | ✅ |
+| Firebase / Firestore | ✅ |
+| Firebase Admin SDK | ✅ |
+| AI Farmer Assistant | ✅ |
+| Crop Doctor / Analyzer | ✅ |
+| Farm Risk | ✅ |
+| Regenerative Advisor | ✅ |
+| English + Hindi | ✅ |
+| Production Frontend | ✅ |
+| Production Backend | ✅ |
+| Render Deployment | ✅ |
+| Frontend → Backend Connection | ✅ |
+
+---
+
+# 🗺️ Roadmap
+
+### 🔜 Planned Improvements
+
+- [ ] Real-time weather API integration
+- [ ] Additional regional languages
+- [ ] Voice-based AI Assistant
+- [ ] Advanced crop disease detection
+- [ ] Offline / low-connectivity support
+- [ ] Personalized crop recommendations
+- [ ] Government agricultural scheme information
+- [ ] Market price information
+- [ ] Advanced farm analytics
+- [ ] Push notifications
+- [ ] Automated testing
+- [ ] Advanced AI personalization
+- [ ] Further UI/UX refinement
+
+---
+
+# 👨‍💻 About the Project
+
+**AgriN — Agricultural Intelligence Platform**
+
+A full-stack agricultural technology project focused on solving real-world farming problems using:
+
+**AI + Data + Cloud + Sustainable Agriculture**
+
+---
+
+# 🌱 AgriN
+
+<p align="center"><strong>Smart technology for better farming decisions.</strong></p>
+
+<p align="center">Empowering farmers with AI, data, and sustainable agriculture.</p>
