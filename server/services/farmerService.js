@@ -158,70 +158,85 @@ export async function createFarm(
     farmData
 ) {
     // First make sure the farmer exists.
-
     const farmerRef =
         doc(farmersCollection, farmerId);
-
 
     const farmerSnapshot =
         await getDoc(farmerRef);
 
-
     if (!farmerSnapshot.exists()) {
-
         throw new Error(
             "Farmer not found"
         );
     }
 
-
-    const farmRef =
-        doc(farmsCollection);
-
-
     const now =
         new Date().toISOString();
 
+    // Check if the farmer already has an existing farm
+    const existingFarms =
+        await getFarmsByFarmer(farmerId);
+
+    const farmRef =
+        existingFarms.length > 0
+            ? doc(farmsCollection, existingFarms[0].id)
+            : doc(farmsCollection);
 
     const farm = {
         id: farmRef.id,
-
         farmerId,
-
         farmName:
             farmData.farmName || "",
-
         landSize:
             farmData.landSize || 0,
-
         landUnit:
             farmData.landUnit || "acre",
-
         soilType:
             farmData.soilType || "",
-
         irrigationType:
             farmData.irrigationType || "",
-
         crops:
             Array.isArray(farmData.crops)
                 ? farmData.crops
                 : [],
-
         location:
             farmData.location || null,
-
-        createdAt: now,
-
+        createdAt:
+            existingFarms[0]?.createdAt || now,
         updatedAt: now,
     };
-
 
     await setDoc(
         farmRef,
         farm
     );
 
+    // If duplicate older farms exist for this farmer, sync them to prevent stale reads
+    if (existingFarms.length > 1) {
+        for (let i = 1; i < existingFarms.length; i++) {
+            try {
+                const dupRef = doc(farmsCollection, existingFarms[i].id);
+                await setDoc(dupRef, {
+                    ...farm,
+                    id: existingFarms[i].id,
+                });
+            } catch (err) {
+                console.warn("Could not sync duplicate farm:", err.message);
+            }
+        }
+    }
+
+    // Synchronize farmer profile location if provided with the farm
+    if (farmData.location?.state && farmData.location?.district) {
+        try {
+            await updateDoc(farmerRef, {
+                location: farmData.location,
+                updatedAt: now,
+            });
+        } catch (err) {
+            console.warn("Could not sync farmer location:", err.message);
+        }
+    }
 
     return farm;
 }
@@ -246,7 +261,6 @@ export async function getFarmsByFarmer(
     const snapshot =
         await getDocs(q);
 
-
     const farms =
         snapshot.docs.map(
             (doc) => ({
@@ -255,6 +269,12 @@ export async function getFarmsByFarmer(
             })
         );
 
+    // Sort by latest updated/created first
+    farms.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+    });
 
     return farms;
 }

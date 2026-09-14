@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { createFarm, createFarmer } from "../services/api";
+import { createFarm, createFarmer, getFarmer, getFarms } from "../services/api";
 import { auth } from "../config/firebase";
 import { useAuth } from "../context/AuthContext";
 import { Sprout, Ruler, Layers, Droplets, Leaf, MapPin, ArrowRight, Loader2 } from 'lucide-react';
+
+const STANDARD_SOILS = ["alluvial", "black", "red", "sandy", "loamy", "clay"];
+const STANDARD_IRRIGATIONS = ["rainfed", "borewell", "canal", "drip", "sprinkler"];
 
 export default function FarmSetup() {
     const navigate = useNavigate();
     const { user } = useAuth();
 
     const [farmerId, setFarmerId] = useState("");
+    const [farmerProfileLocation, setFarmerProfileLocation] = useState(null);
 
     const [formData, setFormData] = useState({
         farmName: "",
@@ -24,6 +28,9 @@ export default function FarmSetup() {
         },
     });
 
+    const [customSoilType, setCustomSoilType] = useState("");
+    const [customIrrigationType, setCustomIrrigationType] = useState("");
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -33,6 +40,56 @@ export default function FarmSetup() {
         if (currentId) {
             setFarmerId(currentId);
             localStorage.setItem("agrin_farmer_id", currentId);
+
+            // 1. Fetch farmer profile to pre-fill location if available
+            getFarmer(currentId).then((res) => {
+                if (res?.data?.location) {
+                    setFarmerProfileLocation(res.data.location);
+                    setFormData((prev) => ({
+                        ...prev,
+                        location: {
+                            state: prev.location.state || res.data.location.state || "",
+                            district: prev.location.district || res.data.location.district || "",
+                        }
+                    }));
+                }
+            }).catch((err) => console.warn("Could not prefill farmer profile:", err.message));
+
+            // 2. Fetch existing farm to pre-fill farm details
+            getFarms(currentId).then((res) => {
+                if (res?.data?.length > 0) {
+                    const sortedFarms = [...res.data].sort((a, b) => {
+                        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                        return dateB - dateA;
+                    });
+                    const latestFarm = sortedFarms[0];
+
+                    const isStandardSoil = STANDARD_SOILS.includes(latestFarm.soilType?.toLowerCase());
+                    const isStandardIrrigation = STANDARD_IRRIGATIONS.includes(latestFarm.irrigationType?.toLowerCase());
+
+                    if (!isStandardSoil && latestFarm.soilType) {
+                        setCustomSoilType(latestFarm.soilType);
+                    }
+                    if (!isStandardIrrigation && latestFarm.irrigationType) {
+                        setCustomIrrigationType(latestFarm.irrigationType);
+                    }
+
+                    setFormData((prev) => ({
+                        ...prev,
+                        farmName: prev.farmName || latestFarm.farmName || "",
+                        landSize: prev.landSize || latestFarm.landSize || "",
+                        landUnit: latestFarm.landUnit || prev.landUnit || "acre",
+                        soilType: isStandardSoil ? latestFarm.soilType?.toLowerCase() : (latestFarm.soilType ? "other" : ""),
+                        irrigationType: isStandardIrrigation ? latestFarm.irrigationType?.toLowerCase() : (latestFarm.irrigationType ? "other" : ""),
+                        crops: prev.crops || (Array.isArray(latestFarm.crops) ? latestFarm.crops.join(", ") : ""),
+                        location: {
+                            state: prev.location.state || latestFarm.location?.state || "",
+                            district: prev.location.district || latestFarm.location?.district || "",
+                        },
+                    }));
+                }
+            }).catch((err) => console.warn("Could not prefill farm data:", err.message));
         }
     }, [user]);
 
@@ -84,13 +141,21 @@ export default function FarmSetup() {
             return;
         }
 
-        if (!formData.soilType) {
-            setError("Please select your soil type.");
+        const effectiveSoilType = formData.soilType === "other"
+            ? customSoilType.trim()
+            : formData.soilType;
+
+        const effectiveIrrigationType = formData.irrigationType === "other"
+            ? customIrrigationType.trim()
+            : formData.irrigationType;
+
+        if (!effectiveSoilType) {
+            setError("Please select or enter your soil type/quality.");
             return;
         }
 
-        if (!formData.irrigationType) {
-            setError("Please select your irrigation type.");
+        if (!effectiveIrrigationType) {
+            setError("Please select or enter your irrigation type.");
             return;
         }
 
@@ -100,9 +165,12 @@ export default function FarmSetup() {
             const cropsArray = formData.crops
                 ? formData.crops.split(",").map((crop) => crop.trim()).filter(Boolean)
                 : [];
+            
+            const finalState = formData.location.state?.trim() || farmerProfileLocation?.state?.trim() || "";
+            const finalDistrict = formData.location.district?.trim() || farmerProfileLocation?.district?.trim() || "";
             const farmLocation =
-                formData.location.state?.trim() && formData.location.district?.trim()
-                    ? { state: formData.location.state.trim(), district: formData.location.district.trim() }
+                finalState && finalDistrict
+                    ? { state: finalState, district: finalDistrict }
                     : null;
 
             const farmPayload = {
@@ -110,8 +178,8 @@ export default function FarmSetup() {
                 farmName: formData.farmName.trim(),
                 landSize: Number(formData.landSize),
                 landUnit: formData.landUnit,
-                soilType: formData.soilType,
-                irrigationType: formData.irrigationType,
+                soilType: effectiveSoilType,
+                irrigationType: effectiveIrrigationType,
                 crops: cropsArray,
                 location: farmLocation,
             };
@@ -242,7 +310,7 @@ export default function FarmSetup() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                                    <Layers className="w-4 h-4 text-gray-400" /> Soil Type
+                                    <Layers className="w-4 h-4 text-gray-400" /> Soil Type / Quality
                                 </label>
                                 <select
                                     name="soilType"
@@ -257,8 +325,22 @@ export default function FarmSetup() {
                                     <option value="sandy">Sandy</option>
                                     <option value="loamy">Loamy</option>
                                     <option value="clay">Clay</option>
-                                    <option value="other">Other</option>
+                                    <option value="other">Other / Custom Quality</option>
                                 </select>
+                                {formData.soilType === "other" && (
+                                    <div className="mt-3">
+                                        <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                                            Specify Soil Quality / Type
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={customSoilType}
+                                            onChange={(e) => setCustomSoilType(e.target.value)}
+                                            placeholder="e.g. Silt loam, Saline, Peaty..."
+                                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 bg-white"
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700 flex items-center gap-1.5">
@@ -276,8 +358,22 @@ export default function FarmSetup() {
                                     <option value="canal">Canal</option>
                                     <option value="drip">Drip</option>
                                     <option value="sprinkler">Sprinkler</option>
-                                    <option value="other">Other</option>
+                                    <option value="other">Other / Custom Method</option>
                                 </select>
+                                {formData.irrigationType === "other" && (
+                                    <div className="mt-3">
+                                        <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                                            Specify Irrigation Method
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={customIrrigationType}
+                                            onChange={(e) => setCustomIrrigationType(e.target.value)}
+                                            placeholder="e.g. Tube well, River lift, Furrow..."
+                                            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 bg-white"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -322,20 +418,20 @@ export default function FarmSetup() {
                                     name="state"
                                     value={formData.location.state}
                                     onChange={handleLocationChange}
-                                    placeholder="e.g. Uttar Pradesh"
+                                    placeholder="Enter your state"
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    District
+                                    District / City
                                 </label>
                                 <input
                                     type="text"
                                     name="district"
                                     value={formData.location.district}
                                     onChange={handleLocationChange}
-                                    placeholder="e.g. Prayagraj"
+                                    placeholder="Enter your district or city"
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>

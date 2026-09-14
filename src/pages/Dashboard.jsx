@@ -8,6 +8,7 @@ import {
     getWeather,
     getFarmRisk,
 } from "../services/api";
+import { MapPin } from "lucide-react";
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -54,7 +55,12 @@ export default function Dashboard() {
 
             let currentFarm = null;
             if (farmsRes.status === "fulfilled" && farmsRes.value?.data?.length > 0) {
-                currentFarm = farmsRes.value.data[0];
+                const sortedFarms = [...farmsRes.value.data].sort((a, b) => {
+                    const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                    const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                    return dateB - dateA;
+                });
+                currentFarm = sortedFarms[0];
                 setFarm(currentFarm);
             }
 
@@ -243,10 +249,10 @@ export default function Dashboard() {
                                             Current Weather
                                         </p>
                                         <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                                            {weather?.location?.name}
+                                            {weatherLocation?.district || weather?.location?.district || weather?.location?.name || "Your Location"}
                                         </h2>
                                         <p className="text-base text-gray-500">
-                                            {weather?.location?.state}
+                                            {weatherLocation?.state || weather?.location?.state || ""}
                                         </p>
                                     </div>
                                     
@@ -306,7 +312,15 @@ export default function Dashboard() {
                         
                         {farm ? (
                             <div className="flex-1">
-                                <h3 className="text-lg font-bold text-gray-800">{farm.farmName || "My Farm"}</h3>
+                                <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
+                                    <h3 className="text-lg font-bold text-gray-800">{farm.farmName || "My Farm"}</h3>
+                                    {(farm.location?.district || farm.location?.state) && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-800 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg w-fit">
+                                            <MapPin className="w-3.5 h-3.5 text-green-600" />
+                                            {[farm.location?.district, farm.location?.state].filter(Boolean).join(", ")}
+                                        </span>
+                                    )}
+                                </div>
                                 
                                 <div className="mt-5 grid grid-cols-2 gap-y-6 gap-x-4">
                                     <div>
@@ -315,11 +329,11 @@ export default function Dashboard() {
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Soil Type</p>
-                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{farm.soilType}</p>
+                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{farm.soilType || "Not specified"}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Irrigation</p>
-                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{farm.irrigationType}</p>
+                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{farm.irrigationType || "Not specified"}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Crops</p>

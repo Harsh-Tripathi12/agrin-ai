@@ -218,21 +218,21 @@ export default function Profile() {
                                     name="state"
                                     value={formData.location.state}
                                     onChange={handleLocationChange}
-                                    placeholder="e.g. Uttar Pradesh"
+                                    placeholder="Enter your state"
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>
 
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    District
+                                    District / City
                                 </label>
                                 <input
                                     type="text"
                                     name="district"
                                     value={formData.location.district}
                                     onChange={handleLocationChange}
-                                    placeholder="e.g. Prayagraj"
+                                    placeholder="Enter your district or city"
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>

@@ -60,70 +60,41 @@ async function geocodeLocation(
     district,
     state
 ) {
-    const locationName =
-        `${district}, ${state}`;
+    const fetchResults = async (queryText) => {
+        const url = new URL(GEOCODING_URL);
+        url.searchParams.set("name", queryText);
+        url.searchParams.set("count", "10");
+        url.searchParams.set("language", "en");
+        url.searchParams.set("format", "json");
+        url.searchParams.set("countryCode", "IN");
 
-    const url = new URL(GEOCODING_URL);
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.results || [];
+    };
 
-    url.searchParams.set(
-        "name",
-        locationName
-    );
+    let results = await fetchResults(`${district}, ${state}`);
+    if (results.length === 0) {
+        results = await fetchResults(district);
+    }
+    if (results.length === 0) {
+        results = await fetchResults(state);
+    }
 
-    url.searchParams.set(
-        "count",
-        "5"
-    );
-
-    url.searchParams.set(
-        "language",
-        "en"
-    );
-
-    url.searchParams.set(
-        "format",
-        "json"
-    );
-
-    url.searchParams.set(
-        "countryCode",
-        "IN"
-    );
-
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
+    if (!results || results.length === 0) {
         throw new Error(
-            "Weather location lookup failed"
+            `Could not find weather location for ${district}, ${state}`
         );
     }
 
+    // Prefer a result whose admin1 matches the provided state
+    const stateMatch = results.find(
+        (result) =>
+            result.admin1?.toLowerCase() === state.toLowerCase()
+    );
 
-    const data = await response.json();
-
-
-    if (
-        !data.results ||
-        data.results.length === 0
-    ) {
-        throw new Error(
-            `Could not find weather location for ${locationName}`
-        );
-    }
-
-
-    // Prefer a result whose admin1 matches
-    // the provided state.
-    const stateMatch =
-        data.results.find(
-            (result) =>
-                result.admin1?.toLowerCase() ===
-                state.toLowerCase()
-        );
-
-
-    return stateMatch || data.results[0];
+    return stateMatch || results[0];
 }
 
 
@@ -233,20 +204,15 @@ export async function getWeatherByLocation(
 
     return {
         location: {
-            name: location.name,
-            district:
-                location.admin2 ||
-                district,
-            state:
-                location.admin1 ||
-                state,
-            country:
-                location.country ||
-                "India",
-            latitude:
-                location.latitude,
-            longitude:
-                location.longitude,
+            name: district || location.name,
+            district: district || location.admin2 || location.name,
+            state: state || location.admin1,
+            matchedName: location.name,
+            matchedDistrict: location.admin2 || null,
+            matchedState: location.admin1 || null,
+            country: location.country || "India",
+            latitude: location.latitude,
+            longitude: location.longitude,
         },
 
         current: {
