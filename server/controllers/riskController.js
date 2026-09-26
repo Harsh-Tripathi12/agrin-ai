@@ -23,10 +23,12 @@ export async function getFarmRisk(
             req.user.uid;
 
 
-        const farmer =
-            await getFarmer(
-                farmerId
-            );
+        let farmer = null;
+        try {
+            farmer = await getFarmer(farmerId);
+        } catch (err) {
+            console.warn("Farmer doc not found for risk calculation:", err.message);
+        }
 
 
         const farms =

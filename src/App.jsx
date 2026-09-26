@@ -1,4 +1,5 @@
 import AppShell from "./components/navigation/AppShell";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import {
     BrowserRouter,
     Navigate,
@@ -51,11 +52,12 @@ function App() {
 
     return (
 
-        <BrowserRouter>
+        <ErrorBoundary>
+            <BrowserRouter>
 
-            <AuthProvider>
+                <AuthProvider>
 
-                <AppShell>
+                    <AppShell>
 
                     <Routes>
 
@@ -166,6 +168,7 @@ function App() {
             </AuthProvider>
 
         </BrowserRouter>
+        </ErrorBoundary>
     );
 }
 

@@ -1,4 +1,4 @@
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { auth } from "../config/firebase";
 import { useAuth } from "../context/AuthContext";
@@ -11,7 +11,6 @@ import {
 import { MapPin } from "lucide-react";
 
 export default function Dashboard() {
-    const navigate = useNavigate();
     const { user } = useAuth();
 
     const [farmer, setFarmer] = useState(null);
@@ -20,6 +19,14 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [risk, setRisk] = useState(null);
+
+    // Weather / farm location resolved safely at component scope
+    const weatherLocation =
+        (farm?.location?.district && farm?.location?.state)
+            ? farm.location
+            : (farmer?.location?.district && farmer?.location?.state)
+            ? farmer.location
+            : null;
 
     const loadDashboard = useCallback(async () => {
         // Safety timeout: Never stay on skeleton for more than 1 second
@@ -69,7 +76,7 @@ export default function Dashboard() {
             setLoading(false);
 
             // Determine location for weather
-            const weatherLocation =
+            const targetLocation =
                 currentFarm?.location?.district && currentFarm?.location?.state
                     ? currentFarm.location
                     : currentFarmer?.location?.district && currentFarmer?.location?.state
@@ -79,9 +86,9 @@ export default function Dashboard() {
             // Load Weather & Risk in parallel in background
             const backgroundPromises = [];
 
-            if (weatherLocation?.district && weatherLocation?.state) {
+            if (targetLocation?.district && targetLocation?.state) {
                 backgroundPromises.push(
-                    getWeather(weatherLocation.district, weatherLocation.state)
+                    getWeather(targetLocation.district, targetLocation.state)
                         .then((res) => {
                             if (res?.data) setWeather(res.data);
                         })
@@ -116,7 +123,16 @@ export default function Dashboard() {
     }, [user]);
 
     useEffect(() => {
-        loadDashboard();
+        let isMounted = true;
+        const fetchDashboard = async () => {
+            if (isMounted) {
+                await loadDashboard();
+            }
+        };
+        fetchDashboard();
+        return () => {
+            isMounted = false;
+        };
     }, [loadDashboard]);
 
     function formatDate(dateString) {
@@ -262,10 +278,10 @@ export default function Dashboard() {
                                         </div>
                                         <div>
                                             <p className="text-5xl font-extrabold tracking-tighter text-gray-900">
-                                                {Math.round(current?.temperature)}°C
+                                                {current?.temperature != null ? `${Math.round(current.temperature)}°C` : "--"}
                                             </p>
                                             <p className="mt-1 text-lg font-medium text-gray-600">
-                                                {current?.condition}
+                                                {current?.condition || "Clear"}
                                             </p>
                                         </div>
                                     </div>
@@ -274,19 +290,19 @@ export default function Dashboard() {
                                 <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Feels like</p>
-                                        <p className="mt-2 text-xl font-bold text-gray-900">{Math.round(current?.feelsLike)}°C</p>
+                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.feelsLike != null ? `${Math.round(current.feelsLike)}°C` : "--"}</p>
                                     </div>
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Humidity</p>
-                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.humidity}%</p>
+                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.humidity != null ? `${current.humidity}%` : "--"}</p>
                                     </div>
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rain</p>
-                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.rain} mm</p>
+                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.rain != null ? `${current.rain} mm` : "0 mm"}</p>
                                     </div>
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
                                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Wind</p>
-                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.windSpeed} km/h</p>
+                                        <p className="mt-2 text-xl font-bold text-gray-900">{current?.windSpeed != null ? `${current.windSpeed} km/h` : "--"}</p>
                                     </div>
                                 </div>
                             </>
@@ -385,7 +401,7 @@ export default function Dashboard() {
                         </div>
 
                         <div className="flex-1">
-                            {risk?.risks?.length > 0 ? (
+                            {Array.isArray(risk?.risks) && risk.risks.length > 0 ? (
                                 <div className="space-y-3">
                                     {risk.risks.slice(0, 3).map((item, index) => (
                                         <div key={index} className="rounded-2xl bg-orange-50/70 p-4 border border-orange-100/50">
@@ -405,28 +421,32 @@ export default function Dashboard() {
                 </div>
 
                 {/* 7-Day Forecast */}
-                {weather?.forecast?.length > 0 && (
+                {Array.isArray(weather?.forecast) && weather.forecast.length > 0 && (
                 <section className="mt-6">
                     <h2 className="mb-4 text-xl font-bold text-gray-900 px-1">7-Day Forecast</h2>
                     <div className="flex overflow-x-auto pb-4 snap-x hide-scrollbar">
                         <div className="flex gap-4 min-w-max pr-4">
-                            {weather.forecast.map((day) => (
+                            {weather.forecast.map((day, idx) => (
                                 <div
-                                    key={day.date}
+                                    key={day.date || idx}
                                     className="snap-start w-32 flex-shrink-0 flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm"
                                 >
                                     <p className="text-sm font-bold text-gray-700">
-                                        {formatDate(day.date)}
+                                        {day.date ? formatDate(day.date) : "Upcoming"}
                                     </p>
                                     <div className="my-4 text-4xl drop-shadow-sm">
-                                        {getWeatherIcon(day.condition)}
+                                        {getWeatherIcon(day.condition || "")}
                                     </div>
                                     <p className="text-xs font-medium text-gray-500 truncate w-full">
-                                        {day.condition}
+                                        {day.condition || "Clear"}
                                     </p>
                                     <div className="mt-3 flex items-baseline justify-center gap-1">
-                                        <span className="text-lg font-bold text-gray-900">{Math.round(day.maxTemperature)}°</span>
-                                        <span className="text-sm font-medium text-gray-400">/{Math.round(day.minTemperature)}°</span>
+                                        <span className="text-lg font-bold text-gray-900">
+                                            {day.maxTemperature != null ? Math.round(day.maxTemperature) : "--"}°
+                                        </span>
+                                        <span className="text-sm font-medium text-gray-400">
+                                            /{day.minTemperature != null ? Math.round(day.minTemperature) : "--"}°
+                                        </span>
                                     </div>
                                     {(day.rainProbability ?? 0) > 0 && (
                                         <div className="mt-3 w-full rounded-lg bg-blue-50 py-1 text-xs font-medium text-blue-600 flex items-center justify-center gap-1">

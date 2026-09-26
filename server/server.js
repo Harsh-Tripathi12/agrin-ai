@@ -74,6 +74,14 @@ app.use(
     errorHandler
 );
 
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("Uncaught Exception thrown:", error);
+});
+
 app.listen(PORT, () => {
     console.log(
         `AgriN server running on port ${PORT}`

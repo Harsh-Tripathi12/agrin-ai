@@ -35,62 +35,66 @@ export default function FarmSetup() {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        const currentId = user?.uid || localStorage.getItem("agrin_farmer_id") || auth.currentUser?.uid;
+        const loadInitialData = async () => {
+            const currentId = user?.uid || localStorage.getItem("agrin_farmer_id") || auth.currentUser?.uid;
 
-        if (currentId) {
-            setFarmerId(currentId);
-            localStorage.setItem("agrin_farmer_id", currentId);
+            if (currentId) {
+                setFarmerId(currentId);
+                localStorage.setItem("agrin_farmer_id", currentId);
 
-            // 1. Fetch farmer profile to pre-fill location if available
-            getFarmer(currentId).then((res) => {
-                if (res?.data?.location) {
-                    setFarmerProfileLocation(res.data.location);
-                    setFormData((prev) => ({
-                        ...prev,
-                        location: {
-                            state: prev.location.state || res.data.location.state || "",
-                            district: prev.location.district || res.data.location.district || "",
+                // 1. Fetch farmer profile to pre-fill location if available
+                getFarmer(currentId).then((res) => {
+                    if (res?.data?.location) {
+                        setFarmerProfileLocation(res.data.location);
+                        setFormData((prev) => ({
+                            ...prev,
+                            location: {
+                                state: prev.location.state || res.data.location.state || "",
+                                district: prev.location.district || res.data.location.district || "",
+                            }
+                        }));
+                    }
+                }).catch((err) => console.warn("Could not prefill farmer profile:", err.message));
+
+                // 2. Fetch existing farm to pre-fill farm details
+                getFarms(currentId).then((res) => {
+                    if (res?.data?.length > 0) {
+                        const sortedFarms = [...res.data].sort((a, b) => {
+                            const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                            const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                            return dateB - dateA;
+                        });
+                        const latestFarm = sortedFarms[0];
+
+                        const isStandardSoil = STANDARD_SOILS.includes(latestFarm.soilType?.toLowerCase());
+                        const isStandardIrrigation = STANDARD_IRRIGATIONS.includes(latestFarm.irrigationType?.toLowerCase());
+
+                        if (!isStandardSoil && latestFarm.soilType) {
+                            setCustomSoilType(latestFarm.soilType);
                         }
-                    }));
-                }
-            }).catch((err) => console.warn("Could not prefill farmer profile:", err.message));
+                        if (!isStandardIrrigation && latestFarm.irrigationType) {
+                            setCustomIrrigationType(latestFarm.irrigationType);
+                        }
 
-            // 2. Fetch existing farm to pre-fill farm details
-            getFarms(currentId).then((res) => {
-                if (res?.data?.length > 0) {
-                    const sortedFarms = [...res.data].sort((a, b) => {
-                        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-                        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-                        return dateB - dateA;
-                    });
-                    const latestFarm = sortedFarms[0];
-
-                    const isStandardSoil = STANDARD_SOILS.includes(latestFarm.soilType?.toLowerCase());
-                    const isStandardIrrigation = STANDARD_IRRIGATIONS.includes(latestFarm.irrigationType?.toLowerCase());
-
-                    if (!isStandardSoil && latestFarm.soilType) {
-                        setCustomSoilType(latestFarm.soilType);
+                        setFormData((prev) => ({
+                            ...prev,
+                            farmName: prev.farmName || latestFarm.farmName || "",
+                            landSize: prev.landSize || latestFarm.landSize || "",
+                            landUnit: latestFarm.landUnit || prev.landUnit || "acre",
+                            soilType: isStandardSoil ? latestFarm.soilType?.toLowerCase() : (latestFarm.soilType ? "other" : ""),
+                            irrigationType: isStandardIrrigation ? latestFarm.irrigationType?.toLowerCase() : (latestFarm.irrigationType ? "other" : ""),
+                            crops: prev.crops || (Array.isArray(latestFarm.crops) ? latestFarm.crops.join(", ") : ""),
+                            location: {
+                                state: prev.location.state || latestFarm.location?.state || "",
+                                district: prev.location.district || latestFarm.location?.district || "",
+                            },
+                        }));
                     }
-                    if (!isStandardIrrigation && latestFarm.irrigationType) {
-                        setCustomIrrigationType(latestFarm.irrigationType);
-                    }
+                }).catch((err) => console.warn("Could not prefill farm data:", err.message));
+            }
+        };
 
-                    setFormData((prev) => ({
-                        ...prev,
-                        farmName: prev.farmName || latestFarm.farmName || "",
-                        landSize: prev.landSize || latestFarm.landSize || "",
-                        landUnit: latestFarm.landUnit || prev.landUnit || "acre",
-                        soilType: isStandardSoil ? latestFarm.soilType?.toLowerCase() : (latestFarm.soilType ? "other" : ""),
-                        irrigationType: isStandardIrrigation ? latestFarm.irrigationType?.toLowerCase() : (latestFarm.irrigationType ? "other" : ""),
-                        crops: prev.crops || (Array.isArray(latestFarm.crops) ? latestFarm.crops.join(", ") : ""),
-                        location: {
-                            state: prev.location.state || latestFarm.location?.state || "",
-                            district: prev.location.district || latestFarm.location?.district || "",
-                        },
-                    }));
-                }
-            }).catch((err) => console.warn("Could not prefill farm data:", err.message));
-        }
+        loadInitialData();
     }, [user]);
 
 
@@ -189,15 +193,11 @@ export default function FarmSetup() {
             } catch (farmErr) {
                 // If farmer profile was missing in DB, auto-create farmer and retry
                 console.warn("Retrying farm creation after ensuring farmer profile:", farmErr.message);
-                try {
-                    await createFarmer({
-                        name: "Farmer",
-                        location: farmLocation,
-                    });
-                    await createFarm(farmPayload);
-                } catch (retryErr) {
-                    throw retryErr;
-                }
+                await createFarmer({
+                    name: "Farmer",
+                    location: farmLocation,
+                });
+                await createFarm(farmPayload);
             }
 
             localStorage.setItem("agrin_farmer_id", currentFarmerId);
