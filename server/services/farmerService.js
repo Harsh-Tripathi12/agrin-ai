@@ -48,6 +48,9 @@ export async function createFarmer(
         phone:
             farmerData.phone || "",
 
+        telegramChatId:
+            farmerData.telegramChatId || "",
+
         language:
             farmerData.language || "en",
 

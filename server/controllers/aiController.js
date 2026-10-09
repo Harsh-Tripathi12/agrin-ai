@@ -195,27 +195,21 @@ export async function cropDoctor(
         }
 
 
-        const context =
-            await getFarmContext(
-                req.user.uid
-            );
-
+        let farm = null;
+        try {
+            const farms = await getFarmsByFarmer(req.user.uid);
+            farm = farms?.[0] || null;
+        } catch (err) {
+            console.warn("Farm context fetch skipped for crop doctor:", err.message);
+        }
 
         const result =
             await analyzeCropImage({
-
-                imageBase64:
-                    image,
-
+                imageBase64: image,
                 mimeType,
-
                 crop,
-
                 language,
-
-                farm:
-                    context.farm,
-
+                farm,
             });
 
 

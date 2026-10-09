@@ -7,24 +7,39 @@ import {
     getFarms,
     getWeather,
     getFarmRisk,
+    sendRiskTelegramAlertApi,
 } from "../services/api";
-import { MapPin } from "lucide-react";
+import { MapPin, RefreshCw, Bot, Loader2 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
+import {
+    translateSoil,
+    translateIrrigation,
+    translateLandUnit,
+    translateWeatherCondition,
+    translateCropName,
+    translateActionText,
+} from "../utils/agriTranslations";
+import { sendWhatsAppRiskAlert } from "../services/whatsappService";
 
 export default function Dashboard() {
     const { user } = useAuth();
+    const { t, isHindi } = useLanguage();
 
     const [farmer, setFarmer] = useState(null);
     const [farm, setFarm] = useState(null);
     const [weather, setWeather] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [refreshingWeather, setRefreshingWeather] = useState(false);
     const [error, setError] = useState("");
     const [risk, setRisk] = useState(null);
+    const [telegramSending, setTelegramSending] = useState(false);
+    const [telegramStatus, setTelegramStatus] = useState("");
 
     // Weather / farm location resolved safely at component scope
     const weatherLocation =
-        (farm?.location?.district && farm?.location?.state)
+        (farm?.location?.district || farm?.location?.state)
             ? farm.location
-            : (farmer?.location?.district && farmer?.location?.state)
+            : (farmer?.location?.district || farmer?.location?.state)
             ? farmer.location
             : null;
 
@@ -77,24 +92,24 @@ export default function Dashboard() {
 
             // Determine location for weather
             const targetLocation =
-                currentFarm?.location?.district && currentFarm?.location?.state
+                (currentFarm?.location?.district || currentFarm?.location?.state)
                     ? currentFarm.location
-                    : currentFarmer?.location?.district && currentFarmer?.location?.state
+                    : (currentFarmer?.location?.district || currentFarmer?.location?.state)
                     ? currentFarmer.location
                     : null;
 
             // Load Weather & Risk in parallel in background
             const backgroundPromises = [];
 
-            if (targetLocation?.district && targetLocation?.state) {
-                backgroundPromises.push(
-                    getWeather(targetLocation.district, targetLocation.state)
-                        .then((res) => {
-                            if (res?.data) setWeather(res.data);
-                        })
-                        .catch((err) => console.warn("Weather fetch error:", err.message))
-                );
-            }
+            const dist = targetLocation?.district?.trim() || "";
+            const st = targetLocation?.state?.trim() || "";
+            backgroundPromises.push(
+                getWeather(dist || st || "Delhi", st || "India")
+                    .then((res) => {
+                        if (res?.data) setWeather(res.data);
+                    })
+                    .catch((err) => console.warn("Weather fetch error:", err.message))
+            );
 
             backgroundPromises.push(
                 getFarmRisk()
@@ -137,12 +152,59 @@ export default function Dashboard() {
 
     function formatDate(dateString) {
         const date = new Date(dateString);
-        return date.toLocaleDateString("en-IN", {
+        return date.toLocaleDateString(isHindi ? "hi-IN" : "en-IN", {
             weekday: "short",
             day: "numeric",
             month: "short",
         });
     }
+
+    const handleRefreshWeather = async () => {
+        try {
+            setRefreshingWeather(true);
+            sessionStorage.clear();
+            const dist = weatherLocation?.district?.trim() || "";
+            const st = weatherLocation?.state?.trim() || "";
+            const res = await getWeather(dist || st || "Delhi", st || "India");
+            if (res?.data) {
+                setWeather(res.data);
+            }
+        } catch (err) {
+            console.warn("Manual weather refresh error:", err.message);
+        } finally {
+            setRefreshingWeather(false);
+        }
+    };
+
+    const handleSendDashboardTelegram = async (singleRisk = null) => {
+        const targetChatId = farmer?.telegramChatId || localStorage.getItem("agrin_telegram_chat_id") || "";
+        if (!targetChatId) {
+            alert(isHindi
+                ? "कृपया पहले प्रोफ़ाइल या फार्म रिस्क पेज में अपनी टेलीग्राम चैट आईडी दर्ज करें।"
+                : "Please enter your Telegram Chat ID in Profile or Farm Risk page first.");
+            return;
+        }
+
+        try {
+            setTelegramSending(true);
+            await sendRiskTelegramAlertApi({
+                chatId: targetChatId,
+                language: isHindi ? "hi" : "en",
+                farmerName: farmer?.name,
+                farmName: farm?.name || farm?.farmName,
+                location: weatherLocation?.district ? `${weatherLocation.district}, ${weatherLocation.state}` : "",
+                overallRisk: singleRisk ? singleRisk.severity : risk?.overallRisk || "low",
+                risks: singleRisk ? [singleRisk] : risk?.risks || [],
+                weather,
+            });
+            setTelegramStatus(isHindi ? "टेलीग्राम भेजा गया! ✓" : "Sent to Telegram! ✓");
+            setTimeout(() => setTelegramStatus(""), 4000);
+        } catch (err) {
+            alert(err.message || (isHindi ? "टेलीग्राम अलर्ट भेजने में विफल।" : "Failed to send Telegram alert."));
+        } finally {
+            setTelegramSending(false);
+        }
+    };
 
     function getWeatherIcon(condition) {
         const text = condition.toLowerCase();
@@ -205,7 +267,7 @@ export default function Dashboard() {
                                 ⚠️
                             </span>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900">Dashboard Unavailable</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">{t("weatherUnavailable", "Dashboard Unavailable")}</h1>
                         <p className="mt-3 text-gray-600">{error}</p>
                     </div>
                     <div className="p-6">
@@ -213,7 +275,7 @@ export default function Dashboard() {
                             onClick={loadDashboard}
                             className="w-full rounded-xl bg-green-600 px-5 py-3.5 font-semibold text-white transition hover:bg-green-700 active:scale-[0.98]"
                         >
-                            Try Again
+                            {t("retry", "Try Again")}
                         </button>
                     </div>
                 </div>
@@ -231,6 +293,14 @@ export default function Dashboard() {
         return "bg-gray-100 text-gray-800";
     };
 
+    const getRiskText = (riskLevel) => {
+        const level = (riskLevel || "").toLowerCase();
+        if (level === "low") return t("low", "Low");
+        if (level === "medium") return t("medium", "Medium");
+        if (level === "high") return t("high", "High");
+        return t("unknown", "Unknown");
+    };
+
     return (
         <div className="min-h-screen bg-[#fdfbf7] px-4 py-6 md:px-8 md:py-10">
             <div className="mx-auto max-w-6xl">
@@ -239,17 +309,17 @@ export default function Dashboard() {
                 <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
                         <p className="text-sm font-bold tracking-wider text-green-600 uppercase">
-                            AgriN
+                            {t("appName", "AgriN")}
                         </p>
                         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-                            Namaste, {farmer?.name || "Farmer"} 👋
+                            {t("namaste", "Namaste")}, {farmer?.name || t("farmer", "Farmer")} 👋
                         </h1>
                         <p className="mt-2 text-base text-gray-600">
-                            Here is what is happening with your farm today.
+                            {t("todayHappening", "Here is what is happening with your farm today.")}
                         </p>
                     </div>
                     <div className="text-sm font-medium text-gray-500">
-                        {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                        {new Date().toLocaleDateString(isHindi ? "hi-IN" : "en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                     </div>
                 </header>
 
@@ -261,11 +331,22 @@ export default function Dashboard() {
                             <>
                                 <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
                                     <div>
-                                        <p className="text-sm font-semibold tracking-wide text-gray-500 uppercase">
-                                            Current Weather
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold tracking-wide text-gray-500 uppercase">
+                                                {t("currentWeather", "Current Weather")}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={handleRefreshWeather}
+                                                disabled={refreshingWeather}
+                                                className="p-1 text-gray-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition disabled:opacity-50"
+                                                title={t("refreshWeather", "Refresh live weather")}
+                                            >
+                                                <RefreshCw className={`w-3.5 h-3.5 ${refreshingWeather ? "animate-spin text-green-600" : ""}`} />
+                                            </button>
+                                        </div>
                                         <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                                            {weatherLocation?.district || weather?.location?.district || weather?.location?.name || "Your Location"}
+                                            {weatherLocation?.district || weather?.location?.district || weather?.location?.name || t("yourLocation", "Your Location")}
                                         </h2>
                                         <p className="text-base text-gray-500">
                                             {weatherLocation?.state || weather?.location?.state || ""}
@@ -281,7 +362,7 @@ export default function Dashboard() {
                                                 {current?.temperature != null ? `${Math.round(current.temperature)}°C` : "--"}
                                             </p>
                                             <p className="mt-1 text-lg font-medium text-gray-600">
-                                                {current?.condition || "Clear"}
+                                                {translateWeatherCondition(current?.condition, isHindi)}
                                             </p>
                                         </div>
                                     </div>
@@ -289,19 +370,19 @@ export default function Dashboard() {
 
                                 <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Feels like</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("feelsLike", "Feels like")}</p>
                                         <p className="mt-2 text-xl font-bold text-gray-900">{current?.feelsLike != null ? `${Math.round(current.feelsLike)}°C` : "--"}</p>
                                     </div>
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Humidity</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("humidity", "Humidity")}</p>
                                         <p className="mt-2 text-xl font-bold text-gray-900">{current?.humidity != null ? `${current.humidity}%` : "--"}</p>
                                     </div>
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rain</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("rain", "Rain")}</p>
                                         <p className="mt-2 text-xl font-bold text-gray-900">{current?.rain != null ? `${current.rain} mm` : "0 mm"}</p>
                                     </div>
                                     <div className="rounded-xl border border-gray-50 bg-gray-50 p-4 transition hover:bg-gray-100">
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Wind</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("wind", "Wind")}</p>
                                         <p className="mt-2 text-xl font-bold text-gray-900">{current?.windSpeed != null ? `${current.windSpeed} km/h` : "--"}</p>
                                     </div>
                                 </div>
@@ -310,8 +391,8 @@ export default function Dashboard() {
                             <div className="flex items-center gap-4 py-2">
                                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-3xl">🌤️</div>
                                 <div>
-                                    <p className="font-semibold text-gray-700">Weather Unavailable</p>
-                                    <p className="text-sm text-gray-400">Could not fetch weather data for your location.</p>
+                                    <p className="font-semibold text-gray-700">{t("weatherUnavailable", "Weather Unavailable")}</p>
+                                    <p className="text-sm text-gray-400">{t("weatherErrorDesc", "Could not fetch weather data for your location.")}</p>
                                 </div>
                             </div>
                         )}
@@ -322,14 +403,14 @@ export default function Dashboard() {
                     {/* Farm */}
                     <section className="flex flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
                         <div className="mb-5 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-gray-900">Your Farm</h2>
+                            <h2 className="text-xl font-bold text-gray-900">{t("yourFarm", "Your Farm")}</h2>
                             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50 text-xl">🚜</span>
                         </div>
                         
                         {farm ? (
                             <div className="flex-1">
                                 <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
-                                    <h3 className="text-lg font-bold text-gray-800">{farm.farmName || "My Farm"}</h3>
+                                    <h3 className="text-lg font-bold text-gray-800">{farm.farmName || (isHindi ? "मेरा खेत" : "My Farm")}</h3>
                                     {(farm.location?.district || farm.location?.state) && (
                                         <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-800 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg w-fit">
                                             <MapPin className="w-3.5 h-3.5 text-green-600" />
@@ -340,33 +421,33 @@ export default function Dashboard() {
                                 
                                 <div className="mt-5 grid grid-cols-2 gap-y-6 gap-x-4">
                                     <div>
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Land Size</p>
-                                        <p className="mt-1 text-base font-semibold text-gray-900">{farm.landSize} {farm.landUnit}</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("landSize", "Land Size")}</p>
+                                        <p className="mt-1 text-base font-semibold text-gray-900">{farm.landSize} {translateLandUnit(farm.landUnit, isHindi)}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Soil Type</p>
-                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{farm.soilType || "Not specified"}</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("soilType", "Soil Type")}</p>
+                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{translateSoil(farm.soilType, isHindi)}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Irrigation</p>
-                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{farm.irrigationType || "Not specified"}</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("irrigation", "Irrigation")}</p>
+                                        <p className="mt-1 text-base font-semibold capitalize text-gray-900">{translateIrrigation(farm.irrigationType, isHindi)}</p>
                                     </div>
                                     <div>
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Crops</p>
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t("totalCrops", "Total Crops")}</p>
                                         <p className="mt-1 text-base font-semibold text-gray-900">{farm.crops?.length || 0}</p>
                                     </div>
                                 </div>
 
                                 {farm.crops?.length > 0 && (
                                     <div className="mt-6 border-t border-gray-50 pt-5">
-                                        <p className="mb-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Current Crops</p>
+                                        <p className="mb-3 text-xs font-medium text-gray-500 uppercase tracking-wide">{t("currentCrops", "Current Crops")}</p>
                                         <div className="flex flex-wrap gap-2">
                                             {farm.crops.map((crop) => (
                                                 <span
                                                     key={crop}
                                                     className="rounded-full bg-green-50 px-3.5 py-1.5 text-sm font-medium text-green-700 border border-green-100"
                                                 >
-                                                    {crop}
+                                                    {translateCropName(crop, isHindi)}
                                                 </span>
                                             ))}
                                         </div>
@@ -376,13 +457,13 @@ export default function Dashboard() {
                         ) : (
                             <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
                                 <span className="text-4xl mb-2">🌱</span>
-                                <p className="font-bold text-gray-800">No Farm Configured</p>
-                                <p className="text-xs text-gray-500 mt-1 mb-4">Set up your farm details to get personalized insights.</p>
+                                <p className="font-bold text-gray-800">{t("noFarmConfigured", "No Farm Configured")}</p>
+                                <p className="text-xs text-gray-500 mt-1 mb-4">{t("setupFarmDesc", "Set up your farm details to get personalized insights.")}</p>
                                 <Link
                                     to="/farm-setup"
                                     className="rounded-xl bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-green-700 transition"
                                 >
-                                    Set Up Farm →
+                                    {t("setupFarmBtn", "Set Up Farm →")}
                                 </Link>
                             </div>
                         )}
@@ -392,12 +473,53 @@ export default function Dashboard() {
                     <section className="flex flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
                         <div className="mb-5 flex items-start justify-between">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">Farm Risk</h2>
-                                <p className="mt-1 text-sm text-gray-500">Current threats & alerts</p>
+                                <h2 className="text-xl font-bold text-gray-900">{t("farmRisk", "Farm Risk")}</h2>
+                                <p className="mt-1 text-sm text-gray-500">{t("currentAlerts", "Current threats & alerts")}</p>
                             </div>
-                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wider ${getRiskColor(risk?.overallRisk)}`}>
-                                {risk?.overallRisk || "Unknown"}
-                            </span>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                {Array.isArray(risk?.risks) && risk.risks.length > 0 && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const farmerPhone = farmer?.phone || farmer?.whatsappNumber || "";
+                                                sendWhatsAppRiskAlert({
+                                                    farmerName: farmer?.name || "",
+                                                    farmName: farm?.farmName || "",
+                                                    location: weatherLocation ? `${weatherLocation.district || ""}, ${weatherLocation.state || ""}` : "",
+                                                    overallRisk: risk?.overallRisk || "medium",
+                                                    risks: risk.risks,
+                                                    weather: weather,
+                                                    phoneNumber: farmerPhone,
+                                                    language: isHindi ? "hi" : "en",
+                                                });
+                                            }}
+                                            className="inline-flex items-center gap-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition shadow-sm"
+                                            title={isHindi ? "व्हाट्सएप पर सभी अलर्ट भेजें" : "Send WhatsApp Alert"}
+                                        >
+                                            <span>📱</span> {isHindi ? "व्हाट्सएप" : "WhatsApp"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSendDashboardTelegram()}
+                                            disabled={telegramSending}
+                                            className="inline-flex items-center gap-1 rounded-full bg-sky-600 hover:bg-sky-700 text-white px-2.5 py-1 text-xs font-bold transition shadow-sm disabled:opacity-60"
+                                            title={isHindi ? "स्वचालित टेलीग्राम अलर्ट भेजें" : "Send Automated Telegram Alert"}
+                                        >
+                                            {telegramSending ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                            ) : (
+                                                <span>🤖</span>
+                                            )}
+                                            {telegramStatus ? telegramStatus : (isHindi ? "टेलीग्राम" : "Telegram")}
+                                        </button>
+                                    </>
+                                )}
+                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wider ${getRiskColor(risk?.overallRisk)}`}>
+                                    {getRiskText(risk?.overallRisk)}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="flex-1">
@@ -405,15 +527,52 @@ export default function Dashboard() {
                                 <div className="space-y-3">
                                     {risk.risks.slice(0, 3).map((item, index) => (
                                         <div key={index} className="rounded-2xl bg-orange-50/70 p-4 border border-orange-100/50">
-                                            <p className="font-bold text-orange-900">{item.title}</p>
-                                            <p className="mt-1 text-sm text-orange-800 leading-relaxed">{item.action}</p>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <p className="font-bold text-orange-900">
+                                                    {(isHindi && item.title_hi) ? item.title_hi : item.title}
+                                                </p>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const farmerPhone = farmer?.phone || farmer?.whatsappNumber || "";
+                                                            sendWhatsAppRiskAlert({
+                                                                farmerName: farmer?.name || "",
+                                                                farmName: farm?.farmName || "",
+                                                                location: weatherLocation ? `${weatherLocation.district || ""}, ${weatherLocation.state || ""}` : "",
+                                                                overallRisk: item.level || risk?.overallRisk || "medium",
+                                                                risks: [item],
+                                                                weather: weather,
+                                                                phoneNumber: farmerPhone,
+                                                                language: isHindi ? "hi" : "en",
+                                                            });
+                                                        }}
+                                                        className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition"
+                                                        title={isHindi ? "व्हाट्सएप पर भेजें" : "Share on WhatsApp"}
+                                                    >
+                                                        <span>📱</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSendDashboardTelegram(item)}
+                                                        className="inline-flex items-center gap-0.5 text-xs font-semibold text-sky-700 bg-white hover:bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md transition"
+                                                        title={isHindi ? "टेलीग्राम पर भेजें" : "Send via Telegram"}
+                                                    >
+                                                        <span>🤖</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p className="mt-1 text-sm text-orange-800 leading-relaxed">
+                                                {(isHindi && item.action_hi) ? item.action_hi : translateActionText(item.action, isHindi)}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="flex h-full flex-col items-center justify-center rounded-2xl bg-gray-50 p-6 text-center border border-dashed border-gray-200">
                                     <span className="text-3xl opacity-50">✅</span>
-                                    <p className="mt-3 text-sm font-medium text-gray-500">No major risks detected at the moment.</p>
+                                    <p className="mt-3 text-sm font-medium text-gray-500">{t("noMajorRisks", "No major risks detected at the moment.")}</p>
                                 </div>
                             )}
                         </div>
@@ -423,7 +582,7 @@ export default function Dashboard() {
                 {/* 7-Day Forecast */}
                 {Array.isArray(weather?.forecast) && weather.forecast.length > 0 && (
                 <section className="mt-6">
-                    <h2 className="mb-4 text-xl font-bold text-gray-900 px-1">7-Day Forecast</h2>
+                    <h2 className="mb-4 text-xl font-bold text-gray-900 px-1">{t("forecast", "7-Day Forecast")}</h2>
                     <div className="flex overflow-x-auto pb-4 snap-x hide-scrollbar">
                         <div className="flex gap-4 min-w-max pr-4">
                             {weather.forecast.map((day, idx) => (
@@ -432,13 +591,13 @@ export default function Dashboard() {
                                     className="snap-start w-32 flex-shrink-0 flex flex-col items-center rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-sm"
                                 >
                                     <p className="text-sm font-bold text-gray-700">
-                                        {day.date ? formatDate(day.date) : "Upcoming"}
+                                        {day.date ? formatDate(day.date) : (isHindi ? "आगामी" : "Upcoming")}
                                     </p>
                                     <div className="my-4 text-4xl drop-shadow-sm">
                                         {getWeatherIcon(day.condition || "")}
                                     </div>
                                     <p className="text-xs font-medium text-gray-500 truncate w-full">
-                                        {day.condition || "Clear"}
+                                        {translateWeatherCondition(day.condition, isHindi)}
                                     </p>
                                     <div className="mt-3 flex items-baseline justify-center gap-1">
                                         <span className="text-lg font-bold text-gray-900">
@@ -462,15 +621,15 @@ export default function Dashboard() {
 
                 {/* Quick Actions */}
                 <section className="mt-6">
-                    <h2 className="mb-4 text-xl font-bold text-gray-900 px-1">Quick Actions</h2>
+                    <h2 className="mb-4 text-xl font-bold text-gray-900 px-1">{t("quickActions", "Quick Actions")}</h2>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         <Link
                             to="/assistant"
                             className="group flex flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md hover:border-green-100"
                         >
                             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-3xl transition-transform group-hover:scale-110">🤖</div>
-                            <h3 className="text-lg font-bold text-gray-900">Farmer Assistant</h3>
-                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">Get AI guidance on farming, crops, and weather.</p>
+                            <h3 className="text-lg font-bold text-gray-900">{t("farmerAssistant", "Farmer Assistant")}</h3>
+                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">{t("assistantDesc", "Get AI guidance on farming, crops, and weather.")}</p>
                         </Link>
 
                         <Link
@@ -478,8 +637,8 @@ export default function Dashboard() {
                             className="group flex flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md hover:border-green-100"
                         >
                             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-3xl transition-transform group-hover:scale-110">🩺</div>
-                            <h3 className="text-lg font-bold text-gray-900">Crop Doctor</h3>
-                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">Analyze images to detect and treat crop diseases.</p>
+                            <h3 className="text-lg font-bold text-gray-900">{t("cropDoctor", "Crop Doctor")}</h3>
+                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">{t("doctorDesc", "Analyze images to detect and treat crop diseases.")}</p>
                         </Link>
 
                         <Link
@@ -487,8 +646,8 @@ export default function Dashboard() {
                             className="group flex flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md hover:border-green-100"
                         >
                             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-3xl transition-transform group-hover:scale-110">⚠️</div>
-                            <h3 className="text-lg font-bold text-gray-900">Farm Risk</h3>
-                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">Check current alerts and weather risks.</p>
+                            <h3 className="text-lg font-bold text-gray-900">{t("farmRisk", "Farm Risk")}</h3>
+                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">{t("riskDesc", "Check current alerts and weather risks.")}</p>
                         </Link>
 
                         <Link
@@ -496,8 +655,8 @@ export default function Dashboard() {
                             className="group flex flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md hover:border-green-100"
                         >
                             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-3xl transition-transform group-hover:scale-110">🌿</div>
-                            <h3 className="text-lg font-bold text-gray-900">Improve Farm</h3>
-                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">View regenerative and practical recommendations.</p>
+                            <h3 className="text-lg font-bold text-gray-900">{t("improveFarm", "Improve Farm")}</h3>
+                            <p className="mt-2 text-sm text-gray-500 leading-relaxed">{t("improveDesc", "View regenerative and practical recommendations.")}</p>
                         </Link>
                     </div>
                 </section>

@@ -74,51 +74,23 @@ function extractText(response) {
 
 
 function cleanJson(text) {
-
     if (!text) {
-        throw new Error(
-            "AI returned an empty response."
-        );
+        throw new Error("AI returned an empty response.");
     }
 
+    let cleaned = text.trim();
 
-    let cleaned =
-        text.trim();
-
-
-    if (
-        cleaned.startsWith("```json")
-    ) {
-        cleaned =
-            cleaned
-                .replace(
-                    /^```json/,
-                    ""
-                )
-                .replace(
-                    /```$/,
-                    ""
-                )
-                .trim();
+    if (cleaned.startsWith("```json")) {
+        cleaned = cleaned.replace(/^```json/, "").replace(/```$/, "").trim();
+    } else if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```/, "").replace(/```$/, "").trim();
     }
 
-
-    if (
-        cleaned.startsWith("```")
-    ) {
-        cleaned =
-            cleaned
-                .replace(
-                    /^```/,
-                    ""
-                )
-                .replace(
-                    /```$/,
-                    ""
-                )
-                .trim();
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1);
     }
-
 
     return JSON.parse(cleaned);
 }
@@ -264,18 +236,15 @@ Rules:
 - Do not claim a certain diagnosis from one image.
 - If the image quality is insufficient, say so.
 - Avoid unsupported pesticide dosage.
-- Mention professional/local agriculture advice when appropriate.
 - ${language === "hi"
-        ? "Write all values in simple Hindi."
-        : "Write all values in simple English."}
+        ? "CRITICAL MANDATORY INSTRUCTION: You MUST write ALL text values (possibleProblem, observations, symptoms, recommendedActions, prevention, disclaimer) in simple, conversational Hindi (हिन्दी - Devanagari script). Do NOT return descriptions in English. The farmer only understands Hindi."
+        : "Write all values in simple, clear English."}
 `;
 
 
     const response =
         await ai.models.generateContent({
-
             model: MODEL,
-
             contents: [
                 {
                     inlineData: {
@@ -290,7 +259,9 @@ Rules:
                         prompt,
                 },
             ],
-
+            config: {
+                responseMimeType: "application/json",
+            },
         });
 
 

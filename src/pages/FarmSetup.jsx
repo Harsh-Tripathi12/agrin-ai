@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { createFarm, createFarmer, getFarmer, getFarms } from "../services/api";
 import { auth } from "../config/firebase";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 import { Sprout, Ruler, Layers, Droplets, Leaf, MapPin, ArrowRight, Loader2 } from 'lucide-react';
 
 const STANDARD_SOILS = ["alluvial", "black", "red", "sandy", "loamy", "clay"];
@@ -11,9 +12,11 @@ const STANDARD_IRRIGATIONS = ["rainfed", "borewell", "canal", "drip", "sprinkler
 export default function FarmSetup() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { t, isHindi } = useLanguage();
 
     const [farmerId, setFarmerId] = useState("");
     const [farmerProfileLocation, setFarmerProfileLocation] = useState(null);
+    const [hasExistingFarm, setHasExistingFarm] = useState(false);
 
     const [formData, setFormData] = useState({
         farmName: "",
@@ -59,6 +62,7 @@ export default function FarmSetup() {
                 // 2. Fetch existing farm to pre-fill farm details
                 getFarms(currentId).then((res) => {
                     if (res?.data?.length > 0) {
+                        setHasExistingFarm(true);
                         const sortedFarms = [...res.data].sort((a, b) => {
                             const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
                             const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
@@ -223,22 +227,33 @@ export default function FarmSetup() {
             <div className="w-full max-w-2xl animate-fade-in-up">
 
                 {/* Progress Indicator */}
-                <div className="mb-8">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-semibold text-green-700">Step 2 of 2</span>
-                        <span className="text-sm font-medium text-gray-500">Farm Details</span>
+                <div className="mb-8 flex items-center justify-between">
+                    <div>
+                        <span className="text-xs font-bold uppercase tracking-wider text-green-700">
+                            {hasExistingFarm ? (isHindi ? "खेत सेटिंग" : "Farm Settings") : (isHindi ? "चरण 2 का 2" : "Step 2 of 2")}
+                        </span>
+                        <h2 className="text-sm font-medium text-gray-500">
+                            {hasExistingFarm ? (isHindi ? "आपके खेत की जानकारी" : "Your Farm Information") : (isHindi ? "खेत का विवरण" : "Farm Details")}
+                        </h2>
                     </div>
-                    <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-600 rounded-full w-full transition-all duration-500"></div>
-                    </div>
+                    {hasExistingFarm && (
+                        <Link
+                            to="/dashboard"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg transition"
+                        >
+                            {isHindi ? "डैशबोर्ड पर जाएं →" : "Go to Dashboard →"}
+                        </Link>
+                    )}
                 </div>
 
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                        Set up your farm
+                        {hasExistingFarm ? (isHindi ? "आपके खेत का विवरण" : "Your Farm Details") : (isHindi ? "अपना खेत सेटअप करें" : "Set up your farm")}
                     </h1>
                     <p className="mt-3 text-gray-600">
-                        Tell us about your farm so we can provide more accurate recommendations.
+                        {hasExistingFarm
+                            ? (isHindi ? "आपके खेत का विवरण सहेजा गया है। आप इसे बदल सकते हैं या डैशबोर्ड पर जा सकते हैं।" : "Your farm details are saved and pre-filled. You can modify them or continue to dashboard.")
+                            : (isHindi ? "हमें अपने खेत के बारे में बताएं ताकि हम सटीक सलाह और मौसम आधारित जोखिम अलर्ट दे सकें।" : "Tell us about your farm so we can provide more accurate recommendations.")}
                     </p>
                 </div>
 
@@ -251,18 +266,18 @@ export default function FarmSetup() {
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
                             <Sprout className="w-5 h-5 text-green-600" />
-                            Farm Identity
+                            {isHindi ? "खेत की पहचान" : "Farm Identity"}
                         </h2>
                         <div>
                             <label className="mb-2 block text-sm font-medium text-gray-700">
-                                Farm Name
+                                {isHindi ? "खेत का नाम" : "Farm Name"}
                             </label>
                             <input
                                 type="text"
                                 name="farmName"
                                 value={formData.farmName}
                                 onChange={handleChange}
-                                placeholder="e.g. My Family Farm"
+                                placeholder={isHindi ? "उदा. मेरा खेत" : "e.g. My Family Farm"}
                                 className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                             />
                         </div>
@@ -272,13 +287,13 @@ export default function FarmSetup() {
                     <div className="space-y-4 pt-2">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
                             <Ruler className="w-5 h-5 text-green-600" />
-                            Land Details
+                            {isHindi ? "ज़मीन का विवरण" : "Land Details"}
                         </h2>
                         
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    Land Size
+                                    {isHindi ? "ज़मीन का आकार" : "Land Size"}
                                 </label>
                                 <input
                                     type="number"
@@ -287,13 +302,13 @@ export default function FarmSetup() {
                                     name="landSize"
                                     value={formData.landSize}
                                     onChange={handleChange}
-                                    placeholder="e.g. 5"
+                                    placeholder={isHindi ? "उदा. 5" : "e.g. 5"}
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    Unit
+                                    {isHindi ? "इकाई" : "Unit"}
                                 </label>
                                 <select
                                     name="landUnit"
@@ -301,8 +316,9 @@ export default function FarmSetup() {
                                     onChange={handleChange}
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 appearance-none bg-white"
                                 >
-                                    <option value="acre">Acre</option>
-                                    <option value="hectare">Hectare</option>
+                                    <option value="acre">{isHindi ? "एकड़ (Acre)" : "Acre"}</option>
+                                    <option value="hectare">{isHindi ? "हेक्टेयर (Hectare)" : "Hectare"}</option>
+                                    <option value="bigha">{isHindi ? "बीघा (Bigha)" : "Bigha"}</option>
                                 </select>
                             </div>
                         </div>
@@ -310,7 +326,7 @@ export default function FarmSetup() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                                    <Layers className="w-4 h-4 text-gray-400" /> Soil Type / Quality
+                                    <Layers className="w-4 h-4 text-gray-400" /> {isHindi ? "मिट्टी का प्रकार" : "Soil Type / Quality"}
                                 </label>
                                 <select
                                     name="soilType"
@@ -318,25 +334,25 @@ export default function FarmSetup() {
                                     onChange={handleChange}
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 appearance-none bg-white"
                                 >
-                                    <option value="">Select soil type</option>
-                                    <option value="alluvial">Alluvial</option>
-                                    <option value="black">Black Soil</option>
-                                    <option value="red">Red Soil</option>
-                                    <option value="sandy">Sandy</option>
-                                    <option value="loamy">Loamy</option>
-                                    <option value="clay">Clay</option>
-                                    <option value="other">Other / Custom Quality</option>
+                                    <option value="">{isHindi ? "-- मिट्टी का प्रकार चुनें --" : "-- Select soil type --"}</option>
+                                    <option value="alluvial">{isHindi ? "जलोढ़ मिट्टी (Alluvial)" : "Alluvial"}</option>
+                                    <option value="black">{isHindi ? "काली मिट्टी (Black Soil)" : "Black Soil"}</option>
+                                    <option value="red">{isHindi ? "लाल मिट्टी (Red Soil)" : "Red Soil"}</option>
+                                    <option value="sandy">{isHindi ? "बलुई मिट्टी (Sandy)" : "Sandy"}</option>
+                                    <option value="loamy">{isHindi ? "दोमट मिट्टी (Loamy)" : "Loamy"}</option>
+                                    <option value="clay">{isHindi ? "चिकनी मिट्टी (Clay)" : "Clay"}</option>
+                                    <option value="other">{isHindi ? "अन्य / विशेष गुणवत्ता" : "Other / Custom Quality"}</option>
                                 </select>
                                 {formData.soilType === "other" && (
                                     <div className="mt-3">
                                         <label className="mb-1.5 block text-xs font-medium text-gray-600">
-                                            Specify Soil Quality / Type
+                                            {isHindi ? "मिट्टी का प्रकार बताएं" : "Specify Soil Quality / Type"}
                                         </label>
                                         <input
                                             type="text"
                                             value={customSoilType}
                                             onChange={(e) => setCustomSoilType(e.target.value)}
-                                            placeholder="e.g. Silt loam, Saline, Peaty..."
+                                            placeholder={isHindi ? "उदा. गाद दोमट, लवणीय..." : "e.g. Silt loam, Saline, Peaty..."}
                                             className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 bg-white"
                                         />
                                     </div>
@@ -344,7 +360,7 @@ export default function FarmSetup() {
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                                    <Droplets className="w-4 h-4 text-gray-400" /> Irrigation Type
+                                    <Droplets className="w-4 h-4 text-gray-400" /> {isHindi ? "सिंचाई का साधन" : "Irrigation Type"}
                                 </label>
                                 <select
                                     name="irrigationType"
@@ -352,24 +368,24 @@ export default function FarmSetup() {
                                     onChange={handleChange}
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 appearance-none bg-white"
                                 >
-                                    <option value="">Select irrigation type</option>
-                                    <option value="rainfed">Rainfed</option>
-                                    <option value="borewell">Borewell</option>
-                                    <option value="canal">Canal</option>
-                                    <option value="drip">Drip</option>
-                                    <option value="sprinkler">Sprinkler</option>
-                                    <option value="other">Other / Custom Method</option>
+                                    <option value="">{isHindi ? "-- सिंचाई का तरीका चुनें --" : "-- Select irrigation type --"}</option>
+                                    <option value="rainfed">{isHindi ? "वर्षा आधारित (Rainfed)" : "Rainfed"}</option>
+                                    <option value="borewell">{isHindi ? "बोरवेल / नलकूप (Borewell)" : "Borewell"}</option>
+                                    <option value="canal">{isHindi ? "नहर (Canal)" : "Canal"}</option>
+                                    <option value="drip">{isHindi ? "ड्रिप / टपक सिंचाई (Drip)" : "Drip"}</option>
+                                    <option value="sprinkler">{isHindi ? "फव्वारा / स्प्रिंकलर (Sprinkler)" : "Sprinkler"}</option>
+                                    <option value="other">{isHindi ? "अन्य विधि" : "Other / Custom Method"}</option>
                                 </select>
                                 {formData.irrigationType === "other" && (
                                     <div className="mt-3">
                                         <label className="mb-1.5 block text-xs font-medium text-gray-600">
-                                            Specify Irrigation Method
+                                            {isHindi ? "सिंचाई का तरीका बताएं" : "Specify Irrigation Method"}
                                         </label>
                                         <input
                                             type="text"
                                             value={customIrrigationType}
                                             onChange={(e) => setCustomIrrigationType(e.target.value)}
-                                            placeholder="e.g. Tube well, River lift, Furrow..."
+                                            placeholder={isHindi ? "उदा. ट्यूबवेल, नदी पंप..." : "e.g. Tube well, River lift, Furrow..."}
                                             className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20 bg-white"
                                         />
                                     </div>
@@ -382,22 +398,22 @@ export default function FarmSetup() {
                     <div className="space-y-4 pt-2">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
                             <Leaf className="w-5 h-5 text-green-600" />
-                            Crops
+                            {isHindi ? "फसलें" : "Crops"}
                         </h2>
                         <div>
                             <label className="mb-2 block text-sm font-medium text-gray-700">
-                                What do you grow?
+                                {isHindi ? "आप कौन सी फसल उगाते हैं?" : "What do you grow?"}
                             </label>
                             <input
                                 type="text"
                                 name="crops"
                                 value={formData.crops}
                                 onChange={handleChange}
-                                placeholder="e.g. Wheat, Rice, Potato"
+                                placeholder={isHindi ? "उदा. गेहूं, धान, आलू, सरसों" : "e.g. Wheat, Rice, Potato"}
                                 className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                             />
                             <p className="mt-1.5 text-xs text-gray-500">
-                                Separate multiple crops with commas.
+                                {isHindi ? "कई फसलों के बीच कॉमा (,) लगाएं।" : "Separate multiple crops with commas."}
                             </p>
                         </div>
                     </div>
@@ -406,32 +422,32 @@ export default function FarmSetup() {
                     <div className="space-y-4 pt-2">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-2">
                             <MapPin className="w-5 h-5 text-green-600" />
-                            Farm Location
+                            {isHindi ? "खेत का स्थान" : "Farm Location"}
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    State
+                                    {isHindi ? "राज्य" : "State"}
                                 </label>
                                 <input
                                     type="text"
                                     name="state"
                                     value={formData.location.state}
                                     onChange={handleLocationChange}
-                                    placeholder="Enter your state"
+                                    placeholder={isHindi ? "अपना राज्य दर्ज करें" : "Enter your state"}
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    District / City
+                                    {isHindi ? "ज़िला / शहर" : "District / City"}
                                 </label>
                                 <input
                                     type="text"
                                     name="district"
                                     value={formData.location.district}
                                     onChange={handleLocationChange}
-                                    placeholder="Enter your district or city"
+                                    placeholder={isHindi ? "अपना ज़िला या शहर दर्ज करें" : "Enter your district or city"}
                                     className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                 />
                             </div>
@@ -446,7 +462,7 @@ export default function FarmSetup() {
                                 to="/dashboard"
                                 className="text-green-700 font-semibold underline hover:text-green-800 text-xs self-start"
                             >
-                                Continue to Dashboard →
+                                {isHindi ? "डैशबोर्ड पर जारी रखें →" : "Continue to Dashboard →"}
                             </Link>
                         </div>
                     )}
@@ -460,11 +476,11 @@ export default function FarmSetup() {
                         {loading ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                Saving Farm...
+                                {isHindi ? "खेत सहेजा जा रहा है..." : "Saving Farm..."}
                             </>
                         ) : (
                             <>
-                                Save Farm & Continue
+                                {hasExistingFarm ? (isHindi ? "खेत विवरण अपडेट करें" : "Update Farm Details") : (isHindi ? "खेत सहेजें और आगे बढ़ें" : "Save Farm & Continue")}
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </>
                         )}

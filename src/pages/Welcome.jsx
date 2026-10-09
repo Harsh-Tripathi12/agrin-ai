@@ -6,14 +6,23 @@ import {
   Sprout,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import LanguageSelector from "../components/common/LanguageSelector";
 
 function Welcome() {
   const navigate = useNavigate();
   const { language } = useLanguage();
+  const { user, loading: authLoading } = useAuth();
 
   const isHindi = language === "hi";
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   return (
     <main className="min-h-screen bg-[#f4f7f1] md:px-4 md:py-6 sm:px-6 sm:py-10">
@@ -101,14 +110,21 @@ function Welcome() {
 
               <LanguageSelector />
 
-              <div className="mt-7 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both">
+              <div className="mt-7 space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both">
                 <button
                   type="button"
                   onClick={() => navigate("/signup")}
                   className="group flex w-full items-center justify-center gap-3 rounded-xl bg-[#16a34a] px-5 py-4 text-base font-semibold text-white shadow-lg shadow-green-600/25 transition-all duration-300 hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  {isHindi ? "शुरू करें" : "Get Started"}
+                  {isHindi ? "शुरू करें (नया खाता)" : "Get Started"}
                   <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/login")}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-[0.98]"
+                >
+                  {isHindi ? "पहले से खाता है? लॉग इन करें" : "Already have an account? Log In"}
                 </button>
               </div>
 

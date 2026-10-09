@@ -1,17 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../config/firebase";
+import { useAuth } from "../context/AuthContext";
+import { getFarmer } from "../services/api";
 import { Mail, Lock, Eye, EyeOff, Sprout, Loader2 } from 'lucide-react';
 
 export default function Login() {
     const navigate = useNavigate();
+    const { user, loading: authLoading } = useAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [user, authLoading, navigate]);
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -26,6 +35,18 @@ export default function Login() {
             setLoading(true);
             const result = await signInWithEmailAndPassword(auth, email, password);
             localStorage.setItem("agrin_farmer_id", result.user.uid);
+
+            // Check if user already completed profile
+            try {
+                const profileRes = await getFarmer(result.user.uid);
+                if (profileRes?.data?.name) {
+                    navigate("/dashboard");
+                    return;
+                }
+            } catch {
+                // If getFarmer fails or not found, fall back to profile setup
+            }
+
             navigate("/profile");
         } catch (error) {
             console.error("Login error:", error);

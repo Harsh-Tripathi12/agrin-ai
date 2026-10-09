@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { getRegenerativeAdvice } from "../services/api";
 import { Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
+import { translateActionText } from "../utils/agriTranslations";
 
 export default function RegenerativeAdvisor() {
-    const language = localStorage.getItem("agrin_language") || "en";
+    const { t, isHindi, language } = useLanguage();
 
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -11,12 +13,12 @@ export default function RegenerativeAdvisor() {
 
     useEffect(() => {
         loadAdvice();
-    }, []);
+    }, [language]);
 
     async function loadAdvice() {
         try {
             setLoading(true);
-            const response = await getRegenerativeAdvice(language);
+            const response = await getRegenerativeAdvice(language || (isHindi ? "hi" : "en"));
             setData(response.data);
         } catch (error) {
             setError(error.message);
@@ -29,7 +31,9 @@ export default function RegenerativeAdvisor() {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-green-50">
                 <Loader2 className="h-10 w-10 animate-spin text-green-600 mb-4" />
-                <p className="text-lg font-medium text-gray-700">Preparing your regenerative plan...</p>
+                <p className="text-lg font-medium text-gray-700">
+                    {isHindi ? "आपकी पुनर्योजी कृषि योजना तैयार की जा रही है..." : "Preparing your regenerative plan..."}
+                </p>
             </div>
         );
     }
@@ -41,14 +45,16 @@ export default function RegenerativeAdvisor() {
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 mb-4">
                         <span className="text-2xl">⚠️</span>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Couldn't load advice</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        {isHindi ? "सलाह लोड नहीं हो सकी" : "Couldn't load advice"}
+                    </h3>
                     <p className="text-gray-600 mb-6">{error}</p>
                     <button
                         onClick={loadAdvice}
                         className="flex items-center justify-center gap-2 w-full rounded-xl bg-green-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-green-700"
                     >
                         <RefreshCw className="h-5 w-5" />
-                        Try Again
+                        {isHindi ? "पुनः प्रयास करें" : "Try Again"}
                     </button>
                 </div>
             </div>
@@ -56,12 +62,12 @@ export default function RegenerativeAdvisor() {
     }
 
     const sections = [
-        ["🌱 Soil Health", data?.soilHealth, "border-l-emerald-500"],
-        ["💧 Water Management", data?.waterManagement, "border-l-blue-400"],
-        ["🔄 Crop Rotation", data?.cropRotation, "border-l-amber-500"],
-        ["🦋 Biodiversity", data?.biodiversity, "border-l-purple-400"],
-        ["🍂 Organic Matter", data?.organicMatter, "border-l-orange-400"],
-        ["🌿 Reduced Disturbance", data?.reducedDisturbance, "border-l-lime-500"],
+        [isHindi ? "🌱 मिट्टी का स्वास्थ्य" : "🌱 Soil Health", data?.soilHealth, "border-l-emerald-500"],
+        [isHindi ? "💧 जल प्रबंधन" : "💧 Water Management", data?.waterManagement, "border-l-blue-400"],
+        [isHindi ? "🔄 फसल चक्र" : "🔄 Crop Rotation", data?.cropRotation, "border-l-amber-500"],
+        [isHindi ? "🦋 जैव विविधता" : "🦋 Biodiversity", data?.biodiversity, "border-l-purple-400"],
+        [isHindi ? "🍂 जैविक पदार्थ" : "🍂 Organic Matter", data?.organicMatter, "border-l-orange-400"],
+        [isHindi ? "🌿 न्यूनतम जुताई / संरक्षण" : "🌿 Reduced Disturbance", data?.reducedDisturbance, "border-l-lime-500"],
     ];
 
     const getDifficultyStyle = (difficulty) => {
@@ -72,18 +78,26 @@ export default function RegenerativeAdvisor() {
         return 'bg-gray-100 text-gray-800';
     };
 
+    const getDifficultyText = (difficulty) => {
+        const d = difficulty?.toLowerCase();
+        if (d === 'easy') return isHindi ? "सरल" : "Easy";
+        if (d === 'medium') return isHindi ? "मध्यम" : "Medium";
+        if (d === 'hard') return isHindi ? "कठिन" : "Hard";
+        return difficulty;
+    };
+
     return (
         <div className="min-h-screen bg-green-50 px-4 py-8">
             <div className="mx-auto max-w-5xl">
                 <div className="mb-8 text-center">
                     <p className="text-sm font-bold tracking-wider text-green-700 uppercase">
-                        AgriN
+                        {t("appName", "AgriN")}
                     </p>
                     <h1 className="mt-2 text-4xl font-extrabold text-gray-900">
-                        Regenerative Advisor 🌱
+                        {isHindi ? "पुनर्योजी कृषि सलाहकार 🌱" : "Regenerative Advisor 🌱"}
                     </h1>
                     <p className="mt-3 text-lg text-gray-600">
-                        Practical ways to improve soil, water and long-term farm resilience.
+                        {isHindi ? "मिट्टी, पानी और खेत की दीर्घकालिक उत्पादकता बढ़ाने के व्यावहारिक उपाय।" : "Practical ways to improve soil, water and long-term farm resilience."}
                     </p>
                 </div>
 
@@ -91,7 +105,7 @@ export default function RegenerativeAdvisor() {
                     <div className="h-2 w-full bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500"></div>
                     <div className="p-6 md:p-8">
                         <h2 className="text-2xl font-bold text-gray-900">
-                            Your Strategic Plan
+                            {isHindi ? "आपकी रणनीतिक योजना" : "Your Strategic Plan"}
                         </h2>
                         <p className="mt-3 text-gray-600 leading-relaxed text-lg">
                             {data?.summary}
@@ -112,7 +126,7 @@ export default function RegenerativeAdvisor() {
                                 {items?.map((item, index) => (
                                     <li key={index} className="flex items-start gap-3 text-gray-700">
                                         <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                        <span className="text-sm leading-relaxed">{item}</span>
+                                        <span className="text-sm leading-relaxed">{translateActionText(item, isHindi)}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -122,7 +136,7 @@ export default function RegenerativeAdvisor() {
 
                 <div className="mt-8 rounded-3xl bg-white p-6 md:p-8 shadow-sm border border-gray-100">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                        Priority Actions
+                        {isHindi ? "प्राथमिकता वाले कार्य" : "Priority Actions"}
                     </h2>
                     
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -133,14 +147,14 @@ export default function RegenerativeAdvisor() {
                             >
                                 <div className="mb-3 flex items-start justify-between gap-3">
                                     <h4 className="font-semibold text-gray-900 line-clamp-2">
-                                        {item.action}
+                                        {translateActionText(item.action, isHindi)}
                                     </h4>
                                     <span className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold capitalize ${getDifficultyStyle(item.difficulty)}`}>
-                                        {item.difficulty}
+                                        {getDifficultyText(item.difficulty)}
                                     </span>
                                 </div>
                                 <p className="mt-auto text-sm text-gray-600">
-                                    {item.reason}
+                                    {translateActionText(item.reason, isHindi)}
                                 </p>
                             </div>
                         ))}

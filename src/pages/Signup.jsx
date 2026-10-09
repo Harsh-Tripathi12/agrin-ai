@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../config/firebase";
-import { Mail, Lock, Eye, EyeOff, Sprout, Loader2 } from 'lucide-react';
+import { useAuth } from "../context/AuthContext";
+import { createFarmer } from "../services/api";
+import { Mail, Lock, Eye, EyeOff, Sprout, Loader2, Phone, Send } from 'lucide-react';
 
 export default function Signup() {
     const navigate = useNavigate();
+    const { user, loading: authLoading } = useAuth();
 
     const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
+    const [telegramChatId, setTelegramChatId] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -15,12 +20,23 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    useEffect(() => {
+        if (!authLoading && user) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [user, authLoading, navigate]);
+
     async function handleSubmit(event) {
         event.preventDefault();
         setError("");
 
         if (!email || !password) {
             setError("Please enter email and password.");
+            return;
+        }
+
+        if (!phone.trim()) {
+            setError("Please enter your phone number for alerts.");
             return;
         }
 
@@ -37,7 +53,24 @@ export default function Signup() {
         try {
             setLoading(true);
             const result = await createUserWithEmailAndPassword(auth, email, password);
-            localStorage.setItem("agrin_farmer_id", result.user.uid);
+            const uid = result.user.uid;
+            localStorage.setItem("agrin_farmer_id", uid);
+            localStorage.setItem("agrin_farmer_phone", phone.trim());
+            if (telegramChatId.trim()) {
+                localStorage.setItem("agrin_telegram_chat_id", telegramChatId.trim());
+            }
+
+            try {
+                await createFarmer({
+                    name: email.split("@")[0],
+                    phone: phone.trim(),
+                    telegramChatId: telegramChatId.trim(),
+                    language: localStorage.getItem("agrin_language") || "en",
+                });
+            } catch (err) {
+                console.warn("Farmer creation deferred:", err.message);
+            }
+
             navigate("/profile");
         } catch (error) {
             console.error("Signup error:", error);
@@ -127,12 +160,60 @@ export default function Signup() {
                                     </div>
                                     <input
                                         type="email"
+                                        required
                                         value={email}
                                         onChange={(event) => setEmail(event.target.value)}
                                         placeholder="you@example.com"
                                         className="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[#16a34a] focus:ring-4 focus:ring-[#16a34a]/10"
                                     />
                                 </div>
+                            </div>
+
+                            {/* Mobile Number for WhatsApp */}
+                            <div>
+                                <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+                                    Mobile Number <span className="text-emerald-700 font-semibold text-xs">(for WhatsApp Alerts)</span>
+                                </label>
+                                <div className="relative">
+                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <Phone className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={phone}
+                                        onChange={(event) => setPhone(event.target.value)}
+                                        placeholder="e.g. 9876543210"
+                                        className="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[#16a34a] focus:ring-4 focus:ring-[#16a34a]/10"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Telegram Chat ID (Optional) */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-semibold text-gray-700">
+                                        Telegram Chat ID <span className="text-gray-400 font-normal text-xs">(Optional / वैकल्पिक)</span>
+                                    </label>
+                                    <span className="text-[11px] text-sky-700 font-semibold">
+                                        @AgrinAlertBot
+                                    </span>
+                                </div>
+                                <div className="relative">
+                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                        <Send className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={telegramChatId}
+                                        onChange={(event) => setTelegramChatId(event.target.value)}
+                                        placeholder="e.g. 123456789 (Optional)"
+                                        className="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-[#16a34a] focus:ring-4 focus:ring-[#16a34a]/10"
+                                    />
+                                </div>
+                                <p className="mt-1 text-[11px] text-gray-500">
+                                    For free automated alerts via Telegram. Can also be added later in Profile.
+                                </p>
                             </div>
 
                             <div>
