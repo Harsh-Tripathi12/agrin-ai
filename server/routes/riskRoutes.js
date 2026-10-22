@@ -2,8 +2,6 @@ import express from "express";
 
 import {
     getFarmRisk,
-    sendWhatsAppRiskAlert,
-    sendTelegramRiskAlert,
 } from "../controllers/riskController.js";
 
 import {
@@ -23,16 +21,6 @@ router.use(
 router.get(
     "/",
     getFarmRisk
-);
-
-router.post(
-    "/whatsapp-alert",
-    sendWhatsAppRiskAlert
-);
-
-router.post(
-    "/telegram-alert",
-    sendTelegramRiskAlert
 );
 
 

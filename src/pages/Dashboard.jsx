@@ -7,9 +7,8 @@ import {
     getFarms,
     getWeather,
     getFarmRisk,
-    sendRiskTelegramAlertApi,
 } from "../services/api";
-import { MapPin, RefreshCw, Bot, Loader2 } from "lucide-react";
+import { MapPin, RefreshCw } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import {
     translateSoil,
@@ -19,7 +18,6 @@ import {
     translateCropName,
     translateActionText,
 } from "../utils/agriTranslations";
-import { sendWhatsAppRiskAlert } from "../services/whatsappService";
 
 export default function Dashboard() {
     const { user } = useAuth();
@@ -32,8 +30,6 @@ export default function Dashboard() {
     const [refreshingWeather, setRefreshingWeather] = useState(false);
     const [error, setError] = useState("");
     const [risk, setRisk] = useState(null);
-    const [telegramSending, setTelegramSending] = useState(false);
-    const [telegramStatus, setTelegramStatus] = useState("");
 
     // Weather / farm location resolved safely at component scope
     const weatherLocation =
@@ -173,36 +169,6 @@ export default function Dashboard() {
             console.warn("Manual weather refresh error:", err.message);
         } finally {
             setRefreshingWeather(false);
-        }
-    };
-
-    const handleSendDashboardTelegram = async (singleRisk = null) => {
-        const targetChatId = farmer?.telegramChatId || localStorage.getItem("agrin_telegram_chat_id") || "";
-        if (!targetChatId) {
-            alert(isHindi
-                ? "कृपया पहले प्रोफ़ाइल या फार्म रिस्क पेज में अपनी टेलीग्राम चैट आईडी दर्ज करें।"
-                : "Please enter your Telegram Chat ID in Profile or Farm Risk page first.");
-            return;
-        }
-
-        try {
-            setTelegramSending(true);
-            await sendRiskTelegramAlertApi({
-                chatId: targetChatId,
-                language: isHindi ? "hi" : "en",
-                farmerName: farmer?.name,
-                farmName: farm?.name || farm?.farmName,
-                location: weatherLocation?.district ? `${weatherLocation.district}, ${weatherLocation.state}` : "",
-                overallRisk: singleRisk ? singleRisk.severity : risk?.overallRisk || "low",
-                risks: singleRisk ? [singleRisk] : risk?.risks || [],
-                weather,
-            });
-            setTelegramStatus(isHindi ? "टेलीग्राम भेजा गया! ✓" : "Sent to Telegram! ✓");
-            setTimeout(() => setTelegramStatus(""), 4000);
-        } catch (err) {
-            alert(err.message || (isHindi ? "टेलीग्राम अलर्ट भेजने में विफल।" : "Failed to send Telegram alert."));
-        } finally {
-            setTelegramSending(false);
         }
     };
 
@@ -477,45 +443,6 @@ export default function Dashboard() {
                                 <p className="mt-1 text-sm text-gray-500">{t("currentAlerts", "Current threats & alerts")}</p>
                             </div>
                             <div className="flex items-center gap-1.5 sm:gap-2">
-                                {Array.isArray(risk?.risks) && risk.risks.length > 0 && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const farmerPhone = farmer?.phone || farmer?.whatsappNumber || "";
-                                                sendWhatsAppRiskAlert({
-                                                    farmerName: farmer?.name || "",
-                                                    farmName: farm?.farmName || "",
-                                                    location: weatherLocation ? `${weatherLocation.district || ""}, ${weatherLocation.state || ""}` : "",
-                                                    overallRisk: risk?.overallRisk || "medium",
-                                                    risks: risk.risks,
-                                                    weather: weather,
-                                                    phoneNumber: farmerPhone,
-                                                    language: isHindi ? "hi" : "en",
-                                                });
-                                            }}
-                                            className="inline-flex items-center gap-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition shadow-sm"
-                                            title={isHindi ? "व्हाट्सएप पर सभी अलर्ट भेजें" : "Send WhatsApp Alert"}
-                                        >
-                                            <span>📱</span> {isHindi ? "व्हाट्सएप" : "WhatsApp"}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSendDashboardTelegram()}
-                                            disabled={telegramSending}
-                                            className="inline-flex items-center gap-1 rounded-full bg-sky-600 hover:bg-sky-700 text-white px-2.5 py-1 text-xs font-bold transition shadow-sm disabled:opacity-60"
-                                            title={isHindi ? "स्वचालित टेलीग्राम अलर्ट भेजें" : "Send Automated Telegram Alert"}
-                                        >
-                                            {telegramSending ? (
-                                                <Loader2 className="w-3 h-3 animate-spin" />
-                                            ) : (
-                                                <span>🤖</span>
-                                            )}
-                                            {telegramStatus ? telegramStatus : (isHindi ? "टेलीग्राम" : "Telegram")}
-                                        </button>
-                                    </>
-                                )}
                                 <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wider ${getRiskColor(risk?.overallRisk)}`}>
                                     {getRiskText(risk?.overallRisk)}
                                 </span>
@@ -531,37 +458,6 @@ export default function Dashboard() {
                                                 <p className="font-bold text-orange-900">
                                                     {(isHindi && item.title_hi) ? item.title_hi : item.title}
                                                 </p>
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const farmerPhone = farmer?.phone || farmer?.whatsappNumber || "";
-                                                            sendWhatsAppRiskAlert({
-                                                                farmerName: farmer?.name || "",
-                                                                farmName: farm?.farmName || "",
-                                                                location: weatherLocation ? `${weatherLocation.district || ""}, ${weatherLocation.state || ""}` : "",
-                                                                overallRisk: item.level || risk?.overallRisk || "medium",
-                                                                risks: [item],
-                                                                weather: weather,
-                                                                phoneNumber: farmerPhone,
-                                                                language: isHindi ? "hi" : "en",
-                                                            });
-                                                        }}
-                                                        className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition"
-                                                        title={isHindi ? "व्हाट्सएप पर भेजें" : "Share on WhatsApp"}
-                                                    >
-                                                        <span>📱</span>
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleSendDashboardTelegram(item)}
-                                                        className="inline-flex items-center gap-0.5 text-xs font-semibold text-sky-700 bg-white hover:bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md transition"
-                                                        title={isHindi ? "टेलीग्राम पर भेजें" : "Send via Telegram"}
-                                                    >
-                                                        <span>🤖</span>
-                                                    </button>
-                                                </div>
                                             </div>
                                             <p className="mt-1 text-sm text-orange-800 leading-relaxed">
                                                 {(isHindi && item.action_hi) ? item.action_hi : translateActionText(item.action, isHindi)}

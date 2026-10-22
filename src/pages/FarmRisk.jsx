@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { getFarmRisk, getFarmer, getFarms, sendRiskTelegramAlertApi } from "../services/api";
+import { getFarmRisk, getFarmer, getFarms } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { sendWhatsAppRiskAlert, formatWhatsAppRiskMessage } from "../services/whatsappService";
-import { formatTelegramRiskMessage } from "../services/telegramService";
 import { translateSeverityText, translateActionText } from "../utils/agriTranslations";
-import { ShieldCheck, AlertTriangle, ShieldAlert, RefreshCw, Loader2, Sparkles, MapPin, MessageCircle, Send, CheckCircle2, Phone, Bot, Info, ExternalLink } from "lucide-react";
+import { ShieldCheck, AlertTriangle, ShieldAlert, RefreshCw } from "lucide-react";
 
 export default function FarmRisk() {
     const { user } = useAuth();
@@ -16,19 +14,6 @@ export default function FarmRisk() {
     const [farm, setFarm] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-
-    // Contact state (auto-fetched from farmer profile & localStorage)
-    const [phone, setPhone] = useState(() => localStorage.getItem("agrin_farmer_phone") || "");
-    const [telegramChatId, setTelegramChatId] = useState(() => localStorage.getItem("agrin_telegram_chat_id") || "");
-    const [showContactEdit, setShowContactEdit] = useState(false);
-    const [tempPhone, setTempPhone] = useState("");
-    const [tempTelegramId, setTempTelegramId] = useState("");
-    const [alertSent, setAlertSent] = useState(false);
-    const [showPreview, setShowPreview] = useState(false);
-    const [telegramSending, setTelegramSending] = useState(false);
-    const [telegramSuccess, setTelegramSuccess] = useState("");
-    const [telegramError, setTelegramError] = useState("");
-    const [showTelegramHelp, setShowTelegramHelp] = useState(false);
 
     useEffect(() => {
         loadRisk();
@@ -44,14 +29,6 @@ export default function FarmRisk() {
                 getFarmer(farmerId).then(res => {
                     if (res?.data) {
                         setFarmer(res.data);
-                        if (res.data.phone) {
-                            setPhone(res.data.phone);
-                            localStorage.setItem("agrin_farmer_phone", res.data.phone);
-                        }
-                        if (res.data.telegramChatId) {
-                            setTelegramChatId(res.data.telegramChatId);
-                            localStorage.setItem("agrin_telegram_chat_id", res.data.telegramChatId);
-                        }
                     }
                 }).catch(() => {});
 
@@ -71,52 +48,6 @@ export default function FarmRisk() {
             setLoading(false);
         }
     }
-
-    const handleSendWhatsAppAlert = (singleRisk = null) => {
-        const riskPayload = singleRisk ? {
-            overallRisk: singleRisk.severity,
-            risks: [singleRisk],
-        } : data;
-
-        sendWhatsAppRiskAlert({
-            phoneNumber: phone || localStorage.getItem("agrin_farmer_phone") || "",
-            farmer,
-            farm,
-            risk: riskPayload,
-            weather: data?.weather,
-            language
-        });
-
-        setAlertSent(true);
-        setTimeout(() => setAlertSent(false), 5000);
-    };
-
-    const handleSendTelegramAlert = async (singleRisk = null) => {
-        if (!telegramChatId.trim()) {
-            setTelegramError(isHindi ? "कृपया अपनी टेलीग्राम चैट आईडी दर्ज करें।" : "Please enter your Telegram Chat ID.");
-            return;
-        }
-
-        try {
-            setTelegramSending(true);
-            setTelegramError("");
-            setTelegramSuccess("");
-
-            await sendRiskTelegramAlertApi({
-                chatId: telegramChatId.trim(),
-                language,
-            });
-
-            localStorage.setItem("agrin_telegram_chat_id", telegramChatId.trim());
-            setTelegramSuccess(isHindi ? "स्वचालित टेलीग्राम अलर्ट सफलतापूर्वक भेजा गया! ✓" : "Automated Telegram Alert Delivered! ✓");
-            setTimeout(() => setTelegramSuccess(""), 6000);
-        } catch (err) {
-            console.error("Telegram alert error:", err);
-            setTelegramError(err.message || (isHindi ? "अलर्ट भेजने में विफल। कृपया चैट आईडी जांचें।" : "Failed to deliver Telegram alert. Please check Chat ID."));
-        } finally {
-            setTelegramSending(false);
-        }
-    };
 
     if (loading) {
         return (
@@ -230,257 +161,19 @@ export default function FarmRisk() {
                         </p>
                     </div>
                     
-                        <div className="flex flex-wrap items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => handleSendWhatsAppAlert()}
-                                className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-4 py-3.5 font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 transition"
-                                title="Send WhatsApp Alert"
-                            >
-                                <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                                <span>{isHindi ? "📱 व्हाट्सएप अलर्ट" : "📱 WhatsApp Alert"}</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setAlertChannel("telegram");
-                                    handleSendTelegramAlert();
-                                }}
-                                disabled={telegramSending}
-                                className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white px-4 py-3.5 font-bold text-xs sm:text-sm shadow-md shadow-sky-600/25 transition disabled:opacity-60"
-                                title="Send Automated Telegram Alert"
-                            >
-                                {telegramSending ? (
-                                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                                ) : (
-                                    <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
-                                )}
-                                <span>{isHindi ? "🤖 टेलीग्राम अलर्ट" : "🤖 Telegram Alert"}</span>
-                            </button>
-                        </div>
-                    </div>
-
-
-                {/* Simplified Farmer Alert Card (Low Fatigue & Direct) */}
-                <div className="mt-6 rounded-3xl bg-white p-6 sm:p-7 border border-gray-200/80 shadow-sm overflow-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-gray-100">
-                        <div>
-                            <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
-                                <span>🌾</span>
-                                {isHindi ? "तुरंत खेत जोखिम अलर्ट सूचनाएं" : "Instant Farm Risk Alerts"}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                                {isHindi
-                                    ? "अपने खेत के मौसम, खतरों और विस्तृत समाधान को व्हाट्सएप या टेलीग्राम पर तुरंत पाएं।"
-                                    : "Get real-time farm threats and actionable remedies delivered directly to your phone."}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setTempPhone(phone);
-                                    setTempTelegramId(telegramChatId);
-                                    setShowContactEdit(!showContactEdit);
-                                }}
-                                className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200/60 transition"
-                            >
-                                ✏️ {showContactEdit ? (isHindi ? "बंद करें" : "Close") : (isHindi ? "नंबर / चैट आईडी बदलें" : "Edit Phone / Chat ID")}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setShowTelegramHelp(!showTelegramHelp)}
-                                className="text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200/60 transition"
-                            >
-                                💡 {showTelegramHelp ? (isHindi ? "गाइड बंद करें" : "Hide Guide") : (isHindi ? "टेलीग्राम गाइड" : "Telegram Guide")}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Inline Contact Editor */}
-                    {showContactEdit && (
-                        <div className="mt-4 p-4 rounded-2xl bg-gray-50 border border-gray-200/80 animate-in fade-in duration-200">
-                            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">
-                                {isHindi ? "अलर्ट संपर्क जानकारी अपडेट करें:" : "Update Alert Contact Information:"}
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                        📱 {isHindi ? "मोबाइल नंबर (व्हाट्सएप)" : "Mobile Number (WhatsApp)"}
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        value={tempPhone}
-                                        onChange={(e) => setTempPhone(e.target.value)}
-                                        placeholder="e.g. 9876543210"
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-xs font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                        🤖 {isHindi ? "टेलीग्राम चैट आईडी (वैकल्पिक)" : "Telegram Chat ID (Optional)"}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={tempTelegramId}
-                                        onChange={(e) => setTempTelegramId(e.target.value)}
-                                        placeholder="e.g. 123456789"
-                                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-xs font-medium outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
-                                    />
-                                </div>
-                            </div>
-                            <div className="mt-3 flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowContactEdit(false)}
-                                    className="px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-200 transition"
-                                >
-                                    {isHindi ? "रद्द करें" : "Cancel"}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSaveContact}
-                                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-sm transition"
-                                >
-                                    {isHindi ? "सहेजें ✓" : "Save Changes ✓"}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Telegram Quick Guide */}
-                    {showTelegramHelp && (
-                        <div className="mt-4 p-4 rounded-2xl bg-sky-50 border border-sky-100 text-xs text-sky-950 animate-in fade-in duration-200 space-y-2">
-                            <p className="font-bold text-sky-900 flex items-center gap-1.5">
-                                <Bot className="w-4 h-4 text-sky-700" />
-                                {isHindi ? "📌 टेलीग्राम चैट आईडी 5 सेकंड में कैसे प्राप्त करें:" : "📌 How to get your Telegram Chat ID in 5 seconds:"}
-                            </p>
-                            <ol className="list-decimal list-inside space-y-1 text-gray-700 pl-1 leading-relaxed">
-                                <li>
-                                    {isHindi
-                                        ? "टेलीग्राम में @AgrinAlertBot सर्च करें और 'START' दबाएं (ताकि बॉट आपको अलर्ट भेज सके)।"
-                                        : "Search @AgrinAlertBot on Telegram and tap 'START' (allows the bot to message you)."}
-                                </li>
-                                <li>
-                                    {isHindi
-                                        ? "टेलीग्राम में @userinfobot सर्च करें और 'START' दबाएं। यह आपको आपकी संख्यात्मक आईडी (Id) बताएगा।"
-                                        : "Search @userinfobot on Telegram and tap 'START' to view your numeric user ID."}
-                                </li>
-                                <li>
-                                    {isHindi
-                                        ? "उस आईडी को यहां सहेजें और स्वचालित अलर्ट का लाभ उठाएं (100% मुफ़्त)।"
-                                        : "Save the ID number here to receive 100% free automated background alerts."}
-                                </li>
-                            </ol>
-                        </div>
-                    )}
-
-                    {/* 2 Clean Alert Delivery Options */}
-                    <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        
-                        {/* Option 1: WhatsApp 1-Click */}
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 sm:p-5 flex flex-col justify-between hover:border-emerald-200 transition">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-4 rounded-2xl border ${getRiskStyles(overallSev, true)} flex items-center gap-3`}>
+                            {getRiskIcon(overallSev)}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
-                                            <MessageCircle className="w-4 h-4" />
-                                        </div>
-                                        <h4 className="font-bold text-gray-900 text-sm">
-                                            {isHindi ? "व्हाट्सएप अलर्ट (1-क्लिक)" : "WhatsApp Alert (1-Click)"}
-                                        </h4>
-                                    </div>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                                        {isHindi ? "1-क्लिक" : "1-Click"}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-600 leading-relaxed mb-3">
-                                    {isHindi
-                                        ? "किसान के व्हाट्सएप पर विस्तृत विश्लेषण, मौसम और समाधान तुरंत भेजें।"
-                                        : "Sends detailed weather, hazards, and remedial actions straight to WhatsApp."}
-                                </p>
-                                <div className="text-xs text-gray-700 bg-white/80 p-2.5 rounded-xl border border-emerald-100/80 mb-4 flex items-center gap-2">
-                                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>
-                                        {isHindi ? "नंबर:" : "Phone:"} <strong className="font-semibold text-gray-900">{phone || (isHindi ? "दर्ज नहीं" : "Not set")}</strong>
-                                    </span>
-                                </div>
+                                <span className="text-xs font-bold uppercase tracking-wider opacity-80 block">
+                                    {t("status", "Status")}
+                                </span>
+                                <span className="text-base font-extrabold capitalize">
+                                    {translateSeverity(overallSev)}
+                                </span>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => handleSendWhatsAppAlert()}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white py-2.5 px-4 font-bold text-xs shadow-sm shadow-emerald-600/20 transition"
-                            >
-                                <MessageCircle className="w-4 h-4" />
-                                <span>{alertSent ? (isHindi ? "अलर्ट भेजा गया! ✓" : "Alert Sent! ✓") : (isHindi ? "व्हाट्सएप पर भेजें" : "Send WhatsApp Alert")}</span>
-                            </button>
                         </div>
-
-                        {/* Option 2: Telegram Automated */}
-                        <div className="rounded-2xl border border-sky-100 bg-sky-50/40 p-4 sm:p-5 flex flex-col justify-between hover:border-sky-200 transition">
-                            <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center">
-                                            <Bot className="w-4 h-4" />
-                                        </div>
-                                        <h4 className="font-bold text-gray-900 text-sm">
-                                            {isHindi ? "टेलीग्राम अलर्ट (स्वचालित)" : "Telegram Alert (Automated)"}
-                                        </h4>
-                                    </div>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800">
-                                        {isHindi ? "100% स्वचालित" : "Automated Bot"}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-600 leading-relaxed mb-3">
-                                    {isHindi
-                                        ? "बिना किसी झंझट सीधे किसान के टेलीग्राम ऐप पर 24x7 बैकग्राउंड सूचना।"
-                                        : "Automated background delivery via @AgrinAlertBot directly to your phone."}
-                                </p>
-                                <div className="text-xs text-gray-700 bg-white/80 p-2.5 rounded-xl border border-sky-100/80 mb-4 flex items-center gap-2">
-                                    <Send className="w-3.5 h-3.5 text-sky-600" />
-                                    <span>
-                                        {isHindi ? "चैट आईडी:" : "Chat ID:"} <strong className="font-semibold text-gray-900">{telegramChatId || (isHindi ? "वैकल्पिक (Optional)" : "Optional (Not set)")}</strong>
-                                    </span>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => handleSendTelegramAlert()}
-                                disabled={telegramSending}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white py-2.5 px-4 font-bold text-xs shadow-sm shadow-sky-600/20 transition disabled:opacity-60"
-                            >
-                                {telegramSending ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span>{isHindi ? "भेजा जा रहा है..." : "Sending..."}</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Bot className="w-4 h-4" />
-                                        <span>{isHindi ? "टेलीग्राम पर भेजें" : "Send Telegram Alert"}</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-
                     </div>
-
-                    {/* Status Feedback Alerts */}
-                    {telegramSuccess && (
-                        <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 flex items-center gap-2 text-xs font-semibold text-emerald-800 animate-in fade-in">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                            <span>{telegramSuccess}</span>
-                        </div>
-                    )}
-
-                    {telegramError && (
-                        <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3.5 flex items-center gap-2 text-xs font-semibold text-red-800 animate-in fade-in">
-                            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                            <span>{telegramError}</span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Detailed Assessment */}
@@ -544,25 +237,6 @@ export default function FarmRisk() {
                                                 }`}>
                                                     {translateSeverity(risk.severity)}
                                                 </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSendWhatsAppAlert(risk)}
-                                                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100 transition"
-                                                    title="Share this threat on WhatsApp"
-                                                >
-                                                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                                    <span>{isHindi ? "व्हाट्सएप" : "WhatsApp"}</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSendTelegramAlert(risk)}
-                                                    className="inline-flex items-center gap-1 rounded-full bg-sky-50 border border-sky-200 px-3 py-1 text-[11px] font-bold text-sky-800 hover:bg-sky-100 transition"
-                                                    title="Send this threat via Telegram"
-                                                >
-                                                    <Bot className="w-3.5 h-3.5 text-sky-600" />
-                                                    <span>{isHindi ? "टेलीग्राम" : "Telegram"}</span>
-                                                </button>
                                             </div>
                                         </div>
 

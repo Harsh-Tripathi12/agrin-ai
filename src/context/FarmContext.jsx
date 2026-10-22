@@ -12,7 +12,6 @@ export function FarmProvider({ children }) {
       return {
         name: parsed.name || "",
         phone: parsed.phone || localStorage.getItem("agrin_farmer_phone") || "",
-        telegramChatId: parsed.telegramChatId || localStorage.getItem("agrin_telegram_chat_id") || "",
         location: parsed.location || "",
         experience: parsed.experience || "",
         crop: parsed.crop || "",
@@ -23,7 +22,6 @@ export function FarmProvider({ children }) {
       return {
         name: "",
         phone: localStorage.getItem("agrin_farmer_phone") || "",
-        telegramChatId: localStorage.getItem("agrin_telegram_chat_id") || "",
         location: "",
         experience: "",
         crop: "",
@@ -37,7 +35,6 @@ export function FarmProvider({ children }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(farmer));
       if (farmer.phone) localStorage.setItem("agrin_farmer_phone", farmer.phone);
-      if (farmer.telegramChatId) localStorage.setItem("agrin_telegram_chat_id", farmer.telegramChatId);
     } catch (e) {
       console.warn("Could not save farm context:", e);
     }
@@ -45,7 +42,6 @@ export function FarmProvider({ children }) {
 
   const updateFarmer = (data) => {
     if (data?.phone) localStorage.setItem("agrin_farmer_phone", data.phone);
-    if (data?.telegramChatId) localStorage.setItem("agrin_telegram_chat_id", data.telegramChatId);
     setFarmer((previous) => ({
       ...previous,
       ...data,

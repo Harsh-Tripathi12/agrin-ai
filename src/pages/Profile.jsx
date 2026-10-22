@@ -4,7 +4,7 @@ import { createFarmer, getFarmer, updateFarmer } from "../services/api";
 import { auth } from "../config/firebase";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
-import { User, Phone, Globe, MapPin, ArrowRight, Loader2, CheckCircle2, LayoutDashboard, Send } from 'lucide-react';
+import { User, Phone, Globe, MapPin, ArrowRight, Loader2, CheckCircle2, LayoutDashboard } from 'lucide-react';
 
 export default function Profile() {
     const navigate = useNavigate();
@@ -14,7 +14,6 @@ export default function Profile() {
     const [formData, setFormData] = useState({
         name: "",
         phone: localStorage.getItem("agrin_farmer_phone") || "",
-        telegramChatId: localStorage.getItem("agrin_telegram_chat_id") || "",
         language: localStorage.getItem("agrin_language") || "en",
         location: {
             state: "",
@@ -43,7 +42,6 @@ export default function Profile() {
                         setFormData({
                             name: data.name || user?.displayName || "",
                             phone: data.phone || localStorage.getItem("agrin_farmer_phone") || "",
-                            telegramChatId: data.telegramChatId || localStorage.getItem("agrin_telegram_chat_id") || "",
                             language: data.language || localStorage.getItem("agrin_language") || "en",
                             location: {
                                 state: data.location?.state || "",
@@ -51,7 +49,6 @@ export default function Profile() {
                             },
                         });
                         if (data.phone) localStorage.setItem("agrin_farmer_phone", data.phone);
-                        if (data.telegramChatId) localStorage.setItem("agrin_telegram_chat_id", data.telegramChatId);
                         if (data.language) {
                             setLanguage?.(data.language);
                         }
@@ -62,7 +59,6 @@ export default function Profile() {
                             ...prev,
                             name: prev.name || user?.displayName || "",
                             phone: prev.phone || localStorage.getItem("agrin_farmer_phone") || "",
-                            telegramChatId: prev.telegramChatId || localStorage.getItem("agrin_telegram_chat_id") || "",
                         }));
                     }
                     console.info("New profile or not yet created:", err.message);
@@ -152,7 +148,6 @@ export default function Profile() {
 
             // Save language preference
             localStorage.setItem("agrin_language", formData.language);
-            localStorage.setItem("agrin_telegram_chat_id", formData.telegramChatId || "");
 
             setSuccessMessage(isHindi ? "प्रोफ़ाइल सफलतापूर्वक सहेजी गई!" : "Profile saved successfully!");
 
@@ -169,7 +164,6 @@ export default function Profile() {
                 const farmerId = response?.data?.id || user?.uid;
                 if (farmerId) localStorage.setItem("agrin_farmer_id", farmerId);
                 localStorage.setItem("agrin_language", formData.language);
-                localStorage.setItem("agrin_telegram_chat_id", formData.telegramChatId || "");
                 navigate("/farm-setup");
                 return;
             } catch (createErr) {
@@ -274,7 +268,7 @@ export default function Profile() {
 
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    {isHindi ? "मोबाइल नंबर (व्हाट्सएप अलर्ट इसी नंबर पर आएंगे)" : "Phone Number (WhatsApp risk alerts will be sent here)"}
+                                    {isHindi ? "मोबाइल नंबर" : "Phone Number"}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -285,34 +279,10 @@ export default function Profile() {
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleChange}
-                                        placeholder={isHindi ? "10 अंकों का व्हाट्सएप नंबर (उदा. 9876543210)" : "10-digit WhatsApp number (e.g. 9876543210)"}
+                                        placeholder={isHindi ? "10 अंकों का मोबाइल नंबर (उदा. 9876543210)" : "10-digit mobile number (e.g. 9876543210)"}
                                         className="w-full pl-10 rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                                     />
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    {isHindi ? "टेलीग्राम चैट आईडी (स्वचालित बैकग्राउंड अलर्ट के लिए)" : "Telegram Chat ID (For Automated Alerts)"}
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Send className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        name="telegramChatId"
-                                        value={formData.telegramChatId}
-                                        onChange={handleChange}
-                                        placeholder={isHindi ? "उदा. 123456789 या @username" : "e.g. 123456789 or @username"}
-                                        className="w-full pl-10 rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
-                                    />
-                                </div>
-                                <p className="mt-1.5 text-xs text-gray-500">
-                                    {isHindi
-                                        ? "💡 अपनी टेलीग्राम चैट आईडी जानने के लिए टेलीग्राम ऐप पर @userinfobot सर्च करें और Start दबाएं।"
-                                        : "💡 To get your Chat ID, search @userinfobot on Telegram and tap Start to see your ID number."}
-                                </p>
                             </div>
 
                             <div>
